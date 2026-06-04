@@ -1,0 +1,88 @@
+import type { Exercise } from "@/types/exercise";
+
+export const mockExercises: Exercise[] = [
+  {
+    id: "exercise-bench-press",
+    name: "Bench Press",
+    muscleGroup: "Chest",
+    equipment: "Barbell",
+    isCustom: false,
+  },
+  {
+    id: "exercise-squat",
+    name: "Squat",
+    muscleGroup: "Legs",
+    equipment: "Barbell",
+    isCustom: false,
+  },
+  {
+    id: "exercise-deadlift",
+    name: "Deadlift",
+    muscleGroup: "Posterior Chain",
+    equipment: "Barbell",
+    isCustom: false,
+  },
+  {
+    id: "exercise-overhead-press",
+    name: "Overhead Press",
+    muscleGroup: "Shoulders",
+    equipment: "Barbell",
+    isCustom: false,
+  },
+  {
+    id: "exercise-pull-up",
+    name: "Pull-Up",
+    muscleGroup: "Back",
+    equipment: "Bodyweight",
+    isCustom: false,
+  },
+  {
+    id: "exercise-barbell-row",
+    name: "Barbell Row",
+    muscleGroup: "Back",
+    equipment: "Barbell",
+    isCustom: false,
+  },
+  {
+    id: "exercise-lat-pulldown",
+    name: "Lat Pulldown",
+    muscleGroup: "Back",
+    equipment: "Cable",
+    isCustom: false,
+  },
+  {
+    id: "exercise-incline-dumbbell-press",
+    name: "Incline Dumbbell Press",
+    muscleGroup: "Chest",
+    equipment: "Dumbbell",
+    isCustom: false,
+  },
+  {
+    id: "exercise-leg-press",
+    name: "Leg Press",
+    muscleGroup: "Legs",
+    equipment: "Machine",
+    isCustom: false,
+  },
+  {
+    id: "exercise-romanian-deadlift",
+    name: "Romanian Deadlift",
+    muscleGroup: "Hamstrings",
+    equipment: "Barbell",
+    isCustom: false,
+  },
+  {
+    id: "exercise-dumbbell-curl",
+    name: "Dumbbell Curl",
+    muscleGroup: "Biceps",
+    equipment: "Dumbbell",
+    isCustom: false,
+  },
+  {
+    id: "exercise-triceps-pushdown",
+    name: "Triceps Pushdown",
+    muscleGroup: "Triceps",
+    equipment: "Cable",
+    isCustom: false,
+  },
+];
