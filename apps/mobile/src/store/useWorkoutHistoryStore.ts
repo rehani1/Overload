@@ -16,10 +16,11 @@ type WorkoutHistoryStore = WorkoutHistoryState & {
   deleteWorkout: (workoutId: string) => void;
   duplicateWorkout: (workoutId: string) => Workout | null;
   getWorkoutById: (workoutId: string) => Workout | undefined;
+  restoreWorkout: (workout: Workout) => void;
   updateWorkout: (workoutId: string, updates: WorkoutHistoryUpdate) => Workout | null;
 };
 
-type WorkoutHistoryUpdate = Partial<Pick<Workout, "date" | "notes" | "title">>;
+type WorkoutHistoryUpdate = Partial<Pick<Workout, "date" | "exercises" | "notes" | "title">>;
 
 let state: WorkoutHistoryState = {
   isHydrated: false,
@@ -68,6 +69,19 @@ function deleteWorkout(workoutId: string) {
   emitAndPersist({
     isHydrated: true,
     workouts: state.workouts.filter((workout) => workout.id !== workoutId),
+  });
+}
+
+function restoreWorkout(workout: Workout) {
+  const existingWorkout = getWorkoutById(workout.id);
+
+  emitAndPersist({
+    isHydrated: true,
+    workouts: existingWorkout
+      ? state.workouts.map((currentWorkout) =>
+          currentWorkout.id === workout.id ? workout : currentWorkout,
+        )
+      : [workout, ...state.workouts],
   });
 }
 
@@ -147,6 +161,7 @@ function buildStore(snapshot: WorkoutHistoryState): WorkoutHistoryStore {
     deleteWorkout,
     duplicateWorkout,
     getWorkoutById,
+    restoreWorkout,
     updateWorkout,
   };
 }

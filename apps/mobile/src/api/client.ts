@@ -1,4 +1,6 @@
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8080/api";
+const configuredApiUrl = process.env.EXPO_PUBLIC_API_URL?.trim();
+const API_URL = configuredApiUrl || "http://localhost:8080/api";
+const isApiConfigured = Boolean(configuredApiUrl);
 
 type RequestOptions = {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -37,4 +39,4 @@ export async function apiRequest<TResponse>(
   return JSON.parse(responseText) as TResponse;
 }
 
-export { API_URL };
+export { API_URL, isApiConfigured };

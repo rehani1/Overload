@@ -1,65 +1,182 @@
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
+import {
+  deleteWorkout as deleteWorkoutRequest,
+  updateWorkout as updateWorkoutRequest,
+} from "@/api/workoutApi";
+import { isApiConfigured } from "@/api/client";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { EmptyState } from "@/components/EmptyState";
 import { Header } from "@/components/Header";
-import { Input } from "@/components/Input";
 import { Screen } from "@/components/Screen";
 import { colors } from "@/constants/colors";
 import { spacing } from "@/constants/spacing";
 import { typography } from "@/constants/typography";
+import { WorkoutCalendarEditor } from "@/features/workouts/WorkoutCalendarEditor";
 import { useWorkoutHistoryStore } from "@/store/useWorkoutHistoryStore";
 import type { Workout } from "@/types/workout";
 
+type SyncState = {
+  kind: "idle" | "pending" | "success" | "error";
+  message: string;
+};
+
 export default function WorkoutsScreen() {
-  const { deleteWorkout, updateWorkout, workouts } = useWorkoutHistoryStore();
+  const { deleteWorkout, restoreWorkout, updateWorkout, workouts } = useWorkoutHistoryStore();
   const completedWorkouts = workouts.filter((workout) => workout.status === "completed");
   const initialDate = completedWorkouts[0]?.date ?? new Date().toISOString();
   const [selectedDateKey, setSelectedDateKey] = useState(getDateKey(initialDate));
+  const [visibleMonthKey, setVisibleMonthKey] = useState(getMonthKey(new Date(initialDate)));
   const [editingWorkoutId, setEditingWorkoutId] = useState<string | null>(null);
-  const [draftDateKey, setDraftDateKey] = useState(selectedDateKey);
-  const [draftTime, setDraftTime] = useState("12:00");
-  const [draftTitle, setDraftTitle] = useState("");
-  const monthDate = new Date(initialDate);
+  const [deleteCandidateId, setDeleteCandidateId] = useState<string | null>(null);
+  const [draftWorkout, setDraftWorkout] = useState<Workout | null>(null);
+  const [syncState, setSyncState] = useState<SyncState>({
+    kind: "idle",
+    message: isApiConfigured
+      ? "Backend sync is enabled."
+      : "Saved locally. Backend sync will activate when API URL is configured.",
+  });
+  const visibleMonthDate = parseMonthKey(visibleMonthKey);
   const workoutsByDate = groupWorkoutsByDate(completedWorkouts);
-  const calendarDays = buildCalendarDays(monthDate);
+  const calendarDays = buildCalendarDays(visibleMonthDate);
   const selectedWorkouts = workoutsByDate.get(selectedDateKey) ?? [];
 
-  function handleStartEdit(workout: Workout) {
-    setEditingWorkoutId(workout.id);
-    setDraftDateKey(getDateKey(workout.date));
-    setDraftTime(getTimeInputValue(workout.date));
-    setDraftTitle(workout.title);
+  function handleCancelDelete() {
+    setDeleteCandidateId(null);
   }
 
   function handleCancelEdit() {
+    setDraftWorkout(null);
     setEditingWorkoutId(null);
+    setDeleteCandidateId(null);
   }
 
-  function handleDeleteWorkout(workout: Workout) {
+  async function handleConfirmDelete(workout: Workout) {
     deleteWorkout(workout.id);
-    setEditingWorkoutId(null);
-  }
-
-  function handleSaveWorkout(workout: Workout) {
-    const updatedWorkout = updateWorkout(workout.id, {
-      date: buildWorkoutDate(draftDateKey, draftTime, workout.date),
-      title: draftTitle.trim() || workout.title,
+    handleCancelEdit();
+    setSyncState({
+      kind: "pending",
+      message: "Workout deleted locally. Syncing delete...",
     });
 
-    if (updatedWorkout) {
-      setSelectedDateKey(getDateKey(updatedWorkout.date));
+    if (!isApiConfigured) {
+      setSyncState({
+        kind: "success",
+        message: "Workout deleted locally. Backend sync is not configured yet.",
+      });
+      return;
     }
 
-    setEditingWorkoutId(null);
+    try {
+      await deleteWorkoutRequest(workout.id);
+      setSyncState({
+        kind: "success",
+        message: "Workout deleted and synced.",
+      });
+    } catch {
+      restoreWorkout(workout);
+      setSelectedDateKey(getDateKey(workout.date));
+      setVisibleMonthKey(getMonthKey(new Date(workout.date)));
+      setSyncState({
+        kind: "error",
+        message: "Delete sync failed. Workout was restored locally.",
+      });
+    }
+  }
+
+  function handleMonthChange(monthOffset: number) {
+    const nextMonthDate = addMonths(visibleMonthDate, monthOffset);
+    setVisibleMonthKey(getMonthKey(nextMonthDate));
+    setSelectedDateKey(getDateKeyFromDate(new Date(nextMonthDate.getFullYear(), nextMonthDate.getMonth(), 1)));
+    handleCancelEdit();
+  }
+
+  function handleStartEdit(workout: Workout) {
+    setEditingWorkoutId(workout.id);
+    setDeleteCandidateId(null);
+    setDraftWorkout(cloneWorkout(workout));
+  }
+
+  async function handleSaveWorkout(originalWorkout: Workout) {
+    if (!draftWorkout) {
+      return;
+    }
+
+    const sanitizedWorkout: Workout = {
+      ...draftWorkout,
+      title: draftWorkout.title.trim() || originalWorkout.title,
+    };
+
+    const updatedWorkout = updateWorkout(originalWorkout.id, {
+      date: sanitizedWorkout.date,
+      exercises: sanitizedWorkout.exercises,
+      notes: sanitizedWorkout.notes,
+      title: sanitizedWorkout.title,
+    });
+
+    if (!updatedWorkout) {
+      setSyncState({
+        kind: "error",
+        message: "Could not find that workout locally.",
+      });
+      return;
+    }
+
+    setSelectedDateKey(getDateKey(updatedWorkout.date));
+    setVisibleMonthKey(getMonthKey(new Date(updatedWorkout.date)));
+    handleCancelEdit();
+    setSyncState({
+      kind: "pending",
+      message: "Workout saved locally. Syncing changes...",
+    });
+
+    if (!isApiConfigured) {
+      setSyncState({
+        kind: "success",
+        message: "Workout saved locally. Backend sync is not configured yet.",
+      });
+      return;
+    }
+
+    try {
+      await updateWorkoutRequest(originalWorkout.id, {
+        date: updatedWorkout.date,
+        exercises: updatedWorkout.exercises,
+        notes: updatedWorkout.notes,
+        title: updatedWorkout.title,
+      });
+      setSyncState({
+        kind: "success",
+        message: "Workout changes synced.",
+      });
+    } catch {
+      updateWorkout(originalWorkout.id, {
+        date: originalWorkout.date,
+        exercises: originalWorkout.exercises,
+        notes: originalWorkout.notes,
+        title: originalWorkout.title,
+      });
+      setSelectedDateKey(getDateKey(originalWorkout.date));
+      setVisibleMonthKey(getMonthKey(new Date(originalWorkout.date)));
+      setSyncState({
+        kind: "error",
+        message: "Sync failed. Local changes were rolled back.",
+      });
+    }
   }
 
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Header title="Calendar" subtitle="See recent completed sessions without turning mobile into analytics." />
+        <Header title="Calendar" subtitle="Edit completed sessions without turning mobile into analytics." />
+
+        <Card title="Sync Status">
+          <Text style={[styles.syncText, syncState.kind === "error" && styles.errorText]}>
+            {syncState.message}
+          </Text>
+        </Card>
 
         {completedWorkouts.length === 0 ? (
           <Card title="Workout Calendar">
@@ -67,7 +184,16 @@ export default function WorkoutsScreen() {
           </Card>
         ) : (
           <>
-            <Card title={formatMonthTitle(monthDate)}>
+            <Card title={formatMonthTitle(visibleMonthDate)}>
+              <View style={styles.monthNav}>
+                <Button onPress={() => handleMonthChange(-1)} variant="secondary">
+                  Previous
+                </Button>
+                <Button onPress={() => handleMonthChange(1)} variant="secondary">
+                  Next
+                </Button>
+              </View>
+
               <View style={styles.weekdayRow}>
                 {weekdays.map((weekday) => (
                   <Text key={weekday} style={styles.weekdayText}>
@@ -86,7 +212,12 @@ export default function WorkoutsScreen() {
                       accessibilityRole={day ? "button" : undefined}
                       disabled={!day}
                       key={day?.dateKey ?? `blank-${index}`}
-                      onPress={() => day && setSelectedDateKey(day.dateKey)}
+                      onPress={() => {
+                        if (day) {
+                          setSelectedDateKey(day.dateKey);
+                          handleCancelEdit();
+                        }
+                      }}
                       style={({ pressed }) => [
                         styles.dayCell,
                         !day && styles.emptyDayCell,
@@ -115,18 +246,21 @@ export default function WorkoutsScreen() {
                 <View style={styles.sessionList}>
                   {selectedWorkouts.map((workout) => (
                     <WorkoutCalendarItem
-                      draftDateKey={draftDateKey}
-                      draftTime={draftTime}
-                      draftTitle={draftTitle}
-                      isEditing={editingWorkoutId === workout.id}
+                      deleteCandidateId={deleteCandidateId}
+                      draftWorkout={draftWorkout}
+                      editingWorkoutId={editingWorkoutId}
                       key={workout.id}
+                      onCancelDelete={handleCancelDelete}
                       onCancelEdit={handleCancelEdit}
-                      onDelete={() => handleDeleteWorkout(workout)}
+                      onConfirmDelete={() => handleConfirmDelete(workout)}
+                      onRequestDelete={() => setDeleteCandidateId(workout.id)}
                       onSave={() => handleSaveWorkout(workout)}
                       onStartEdit={() => handleStartEdit(workout)}
-                      onUpdateDraftDateKey={setDraftDateKey}
-                      onUpdateDraftTime={setDraftTime}
-                      onUpdateDraftTitle={setDraftTitle}
+                      onUpdateDraftWorkout={(updater) =>
+                        setDraftWorkout((currentDraft) =>
+                          currentDraft ? updater(currentDraft) : currentDraft,
+                        )
+                      }
                       workout={workout}
                     />
                   ))}
@@ -141,34 +275,34 @@ export default function WorkoutsScreen() {
 }
 
 type WorkoutCalendarItemProps = {
-  draftDateKey: string;
-  draftTime: string;
-  draftTitle: string;
-  isEditing: boolean;
+  deleteCandidateId: string | null;
+  draftWorkout: Workout | null;
+  editingWorkoutId: string | null;
+  onCancelDelete: () => void;
   onCancelEdit: () => void;
-  onDelete: () => void;
+  onConfirmDelete: () => void;
+  onRequestDelete: () => void;
   onSave: () => void;
   onStartEdit: () => void;
-  onUpdateDraftDateKey: (value: string) => void;
-  onUpdateDraftTime: (value: string) => void;
-  onUpdateDraftTitle: (value: string) => void;
+  onUpdateDraftWorkout: (updater: (workout: Workout) => Workout) => void;
   workout: Workout;
 };
 
 function WorkoutCalendarItem({
-  draftDateKey,
-  draftTime,
-  draftTitle,
-  isEditing,
+  deleteCandidateId,
+  draftWorkout,
+  editingWorkoutId,
+  onCancelDelete,
   onCancelEdit,
-  onDelete,
+  onConfirmDelete,
+  onRequestDelete,
   onSave,
   onStartEdit,
-  onUpdateDraftDateKey,
-  onUpdateDraftTime,
-  onUpdateDraftTitle,
+  onUpdateDraftWorkout,
   workout,
 }: WorkoutCalendarItemProps) {
+  const isDeletePending = deleteCandidateId === workout.id;
+  const isEditing = editingWorkoutId === workout.id && draftWorkout !== null;
   const setCount = workout.exercises.reduce(
     (total, workoutExercise) => total + workoutExercise.sets.length,
     0,
@@ -182,44 +316,41 @@ function WorkoutCalendarItem({
         {workout.exercises.length} exercises · {setCount} sets
       </Text>
 
-      {isEditing ? (
-        <View style={styles.editForm}>
-          <Input
-            label="Workout title"
-            onChangeText={onUpdateDraftTitle}
-            placeholder="Workout title"
-            value={draftTitle}
-          />
-          <Input
-            label="Date"
-            onChangeText={onUpdateDraftDateKey}
-            placeholder="YYYY-MM-DD"
-            value={draftDateKey}
-          />
-          <Input
-            label="Time"
-            onChangeText={onUpdateDraftTime}
-            placeholder="HH:MM"
-            value={draftTime}
-          />
-
-          <View style={styles.actionRow}>
-            <Button onPress={onSave}>Save Changes</Button>
-            <Button onPress={onCancelEdit} variant="secondary">
-              Cancel
-            </Button>
-            <Button onPress={onDelete} variant="danger">
-              Delete Workout
-            </Button>
-          </View>
-        </View>
+      {isEditing && draftWorkout ? (
+        <WorkoutCalendarEditor
+          draftWorkout={draftWorkout}
+          onCancel={onCancelEdit}
+          onDelete={onRequestDelete}
+          onSave={onSave}
+          onUpdateDraftWorkout={onUpdateDraftWorkout}
+        />
       ) : (
         <View style={styles.actionRow}>
           <Button onPress={onStartEdit} variant="secondary">
             Modify
           </Button>
+          <Button onPress={onRequestDelete} variant="danger">
+            Delete
+          </Button>
         </View>
       )}
+
+      {isDeletePending ? (
+        <View style={styles.confirmationBox}>
+          <Text style={styles.confirmationTitle}>Delete this workout?</Text>
+          <Text style={styles.mutedText}>
+            This removes the local workout now and will sync the delete when the backend is configured.
+          </Text>
+          <View style={styles.actionRow}>
+            <Button onPress={onConfirmDelete} variant="danger">
+              Confirm Delete
+            </Button>
+            <Button onPress={onCancelDelete} variant="secondary">
+              Keep Workout
+            </Button>
+          </View>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -230,6 +361,10 @@ type CalendarDay = {
 };
 
 const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+function addMonths(date: Date, offset: number) {
+  return new Date(date.getFullYear(), date.getMonth() + offset, 1);
+}
 
 function buildCalendarDays(date: Date): (CalendarDay | null)[] {
   const year = date.getFullYear();
@@ -247,6 +382,18 @@ function buildCalendarDays(date: Date): (CalendarDay | null)[] {
   });
 
   return [...blanks, ...days];
+}
+
+function cloneWorkout(workout: Workout): Workout {
+  return {
+    ...workout,
+    exercises: workout.exercises.map((workoutExercise) => ({
+      ...workoutExercise,
+      sets: workoutExercise.sets.map((set) => ({
+        ...set,
+      })),
+    })),
+  };
 }
 
 function groupWorkoutsByDate(workouts: Workout[]) {
@@ -273,29 +420,11 @@ function getDateKeyFromDate(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
-function getTimeInputValue(date: string) {
-  const parsedDate = new Date(date);
-  const hours = String(parsedDate.getHours()).padStart(2, "0");
-  const minutes = String(parsedDate.getMinutes()).padStart(2, "0");
+function getMonthKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
 
-  return `${hours}:${minutes}`;
-}
-
-function buildWorkoutDate(dateKey: string, timeValue: string, fallbackDate: string) {
-  const [year, month, day] = dateKey.split("-").map(Number);
-  const [hours, minutes] = timeValue.split(":").map(Number);
-
-  if (
-    !Number.isFinite(year) ||
-    !Number.isFinite(month) ||
-    !Number.isFinite(day) ||
-    !Number.isFinite(hours) ||
-    !Number.isFinite(minutes)
-  ) {
-    return fallbackDate;
-  }
-
-  return new Date(year, month - 1, day, hours, minutes).toISOString();
+  return `${year}-${month}`;
 }
 
 function formatMonthTitle(date: Date) {
@@ -326,13 +455,31 @@ function parseDateKey(dateKey: string) {
   return new Date(year, month - 1, day, 12);
 }
 
+function parseMonthKey(monthKey: string) {
+  const [year, month] = monthKey.split("-").map(Number);
+  return new Date(year, month - 1, 1);
+}
+
 const styles = StyleSheet.create({
   content: {
     gap: spacing.lg,
     paddingBottom: spacing.xxl,
   },
+  syncText: {
+    color: colors.textMuted,
+    fontSize: typography.sizes.body,
+    lineHeight: typography.lineHeights.body,
+  },
+  errorText: {
+    color: colors.danger,
+  },
   pressed: {
     opacity: 0.84,
+  },
+  monthNav: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.md,
   },
   weekdayRow: {
     flexDirection: "row",
@@ -392,17 +539,29 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: 8,
     borderWidth: 1,
-    gap: spacing.xs,
+    gap: spacing.sm,
     padding: spacing.md,
-  },
-  editForm: {
-    gap: spacing.md,
-    marginTop: spacing.md,
   },
   actionRow: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: spacing.md,
+    marginTop: spacing.sm,
+  },
+  confirmationBox: {
+    backgroundColor: colors.surface,
+    borderColor: colors.danger,
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: spacing.sm,
+    marginTop: spacing.md,
+    padding: spacing.md,
+  },
+  confirmationTitle: {
+    color: colors.text,
+    fontSize: typography.sizes.body,
+    fontWeight: typography.weights.semibold,
+    lineHeight: typography.lineHeights.body,
   },
   sessionTitle: {
     color: colors.text,
