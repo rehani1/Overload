@@ -12,7 +12,10 @@ type WorkoutHistoryStore = WorkoutHistoryState & {
   deleteWorkout: (workoutId: string) => void;
   duplicateWorkout: (workoutId: string) => Workout | null;
   getWorkoutById: (workoutId: string) => Workout | undefined;
+  updateWorkout: (workoutId: string, updates: WorkoutHistoryUpdate) => Workout | null;
 };
+
+type WorkoutHistoryUpdate = Partial<Pick<Workout, "date" | "notes" | "title">>;
 
 let state: WorkoutHistoryState = {
   workouts: mockWorkouts,
@@ -56,6 +59,27 @@ function deleteWorkout(workoutId: string) {
   });
 }
 
+function updateWorkout(workoutId: string, updates: WorkoutHistoryUpdate) {
+  const workout = getWorkoutById(workoutId);
+
+  if (!workout) {
+    return null;
+  }
+
+  const updatedWorkout: Workout = {
+    ...workout,
+    ...updates,
+  };
+
+  emit({
+    workouts: state.workouts.map((currentWorkout) =>
+      currentWorkout.id === workoutId ? updatedWorkout : currentWorkout,
+    ),
+  });
+
+  return updatedWorkout;
+}
+
 function duplicateWorkout(workoutId: string): Workout | null {
   const workout = getWorkoutById(workoutId);
 
@@ -92,6 +116,7 @@ function buildStore(snapshot: WorkoutHistoryState): WorkoutHistoryStore {
     deleteWorkout,
     duplicateWorkout,
     getWorkoutById,
+    updateWorkout,
   };
 }
 

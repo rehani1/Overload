@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text } from "react-native";
 
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
@@ -8,12 +8,10 @@ import { Screen } from "@/components/Screen";
 import { colors } from "@/constants/colors";
 import { spacing } from "@/constants/spacing";
 import { typography } from "@/constants/typography";
-import { mockAiReports } from "@/features/ai/mockAiReports";
 import { mockProgress } from "@/features/progress/mockProgress";
 import { mockWorkouts } from "@/features/workouts/mockWorkouts";
 
 const latestWorkout = mockWorkouts[0];
-const latestInsight = mockAiReports[0];
 
 function getSetCount() {
   return latestWorkout.exercises.reduce(
@@ -22,26 +20,17 @@ function getSetCount() {
   );
 }
 
-export default function TodayScreen() {
+export default function HomeScreen() {
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Header title="Today" subtitle="Start fast, review what matters, keep moving." />
+        <Header title="Home" subtitle="Start a session and keep the essentials close." />
 
         <Button onPress={() => router.push("../workout/active")}>Start Workout</Button>
 
-        <Card title="This Week">
-          <View style={styles.metricRow}>
-            <View>
-              <Text style={styles.metricValue}>{mockProgress.workoutsThisWeek}</Text>
-              <Text style={styles.metricLabel}>workouts</Text>
-            </View>
-            <View>
-              <Text style={styles.metricValue}>{mockProgress.totalSetsThisWeek}</Text>
-              <Text style={styles.metricLabel}>sets</Text>
-            </View>
-          </View>
-          <Text style={styles.bodyText}>{mockProgress.consistencyText}</Text>
+        <Card title="Training Snapshot">
+          <Text style={styles.cardHeadline}>{getTrainingSnapshotText()}</Text>
+          <Text style={styles.bodyText}>Recent sessions are saved for deeper review later.</Text>
         </Card>
 
         <Card title="Latest Workout">
@@ -49,11 +38,6 @@ export default function TodayScreen() {
           <Text style={styles.bodyText}>
             {latestWorkout.exercises.length} exercises · {getSetCount()} sets
           </Text>
-        </Card>
-
-        <Card title="Latest AI Insight">
-          <Text style={styles.cardHeadline}>{latestInsight.title}</Text>
-          <Text style={styles.bodyText}>{latestInsight.summary}</Text>
         </Card>
 
         <Card title="Quick Bodyweight">
@@ -69,22 +53,6 @@ const styles = StyleSheet.create({
     gap: spacing.lg,
     paddingBottom: spacing.xxl,
   },
-  metricRow: {
-    flexDirection: "row",
-    gap: spacing.xxl,
-  },
-  metricValue: {
-    color: colors.text,
-    fontSize: typography.sizes.display,
-    fontWeight: typography.weights.bold,
-    lineHeight: typography.lineHeights.display,
-  },
-  metricLabel: {
-    color: colors.textMuted,
-    fontSize: typography.sizes.caption,
-    lineHeight: typography.lineHeights.caption,
-    textTransform: "uppercase",
-  },
   cardHeadline: {
     color: colors.text,
     fontSize: typography.sizes.body,
@@ -97,3 +65,9 @@ const styles = StyleSheet.create({
     lineHeight: typography.lineHeights.body,
   },
 });
+
+function getTrainingSnapshotText() {
+  return mockProgress.workoutsThisWeek > 0
+    ? "Recent training data is being captured."
+    : "Start a workout to begin building your training history.";
+}

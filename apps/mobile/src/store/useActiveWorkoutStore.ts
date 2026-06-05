@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from "react";
 
 import type { Exercise } from "@/types/exercise";
-import type { Workout, WorkoutExercise, WorkoutSet } from "@/types/workout";
+import type { Workout, WorkoutSet } from "@/types/workout";
 
 type ActiveWorkoutState = {
   activeWorkout: Workout | null;
