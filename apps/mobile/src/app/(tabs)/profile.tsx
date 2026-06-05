@@ -1,3 +1,4 @@
+import { router } from "expo-router";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { Button } from "@/components/Button";
@@ -8,9 +9,17 @@ import { colors } from "@/constants/colors";
 import { spacing } from "@/constants/spacing";
 import { typography } from "@/constants/typography";
 import { mockUser } from "@/features/profile/mockUser";
+import { useAuthStore } from "@/store/useAuthStore";
 
 export default function ProfileScreen() {
-  const fullName = `${mockUser.firstName} ${mockUser.lastName}`;
+  const { logout, user } = useAuthStore();
+  const profileUser = user ?? mockUser;
+  const fullName = `${profileUser.firstName} ${profileUser.lastName}`;
+
+  function handleLogout() {
+    logout();
+    router.replace("../login");
+  }
 
   return (
     <Screen>
@@ -18,14 +27,14 @@ export default function ProfileScreen() {
         <Header title="Profile" subtitle="Manage basic account preferences for training." />
 
         <Card title={fullName}>
-          <Text style={styles.mutedText}>{mockUser.email}</Text>
-          <Text style={styles.bodyText}>{mockUser.goal}</Text>
+          <Text style={styles.mutedText}>{profileUser.email}</Text>
+          <Text style={styles.bodyText}>{profileUser.goal}</Text>
         </Card>
 
         <View style={styles.grid}>
           <Card style={styles.gridCard}>
             <Text style={styles.label}>Units</Text>
-            <Text style={styles.value}>{mockUser.unitPreference.toUpperCase()}</Text>
+            <Text style={styles.value}>{profileUser.unitPreference.toUpperCase()}</Text>
           </Card>
           <Card style={styles.gridCard}>
             <Text style={styles.label}>Mode</Text>
@@ -34,14 +43,16 @@ export default function ProfileScreen() {
         </View>
 
         <Card title="Settings">
-          <SettingsRow label="Training goal" value={mockUser.goal} />
+          <SettingsRow label="Training goal" value={profileUser.goal} />
           <SettingsRow label="Notifications" value="Not configured" />
           <SettingsRow label="Data sync" value="Backend not connected" />
         </Card>
 
         <Card title="Account Actions">
           <Text style={styles.mutedText}>Real authentication will be added after backend integration.</Text>
-          <Button variant="secondary">Logout Placeholder</Button>
+          <Button onPress={handleLogout} variant="secondary">
+            Log Out
+          </Button>
         </Card>
       </ScrollView>
     </Screen>
