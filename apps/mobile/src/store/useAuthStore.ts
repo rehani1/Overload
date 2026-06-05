@@ -1,9 +1,13 @@
 import { useSyncExternalStore } from "react";
 
 import { mockUser } from "@/features/profile/mockUser";
+import { loadStoredJson, removeStoredJson, saveStoredJson } from "@/lib/storage";
 import type { User } from "@/types/user";
 
+const AUTH_STORAGE_KEY = "overload.auth.v1";
+
 type AuthState = {
+  isHydrated: boolean;
   user: User | null;
 };
 
@@ -27,6 +31,7 @@ type AuthStore = AuthState & {
 };
 
 let state: AuthState = {
+  isHydrated: false,
   user: null,
 };
 
@@ -47,16 +52,21 @@ function getSnapshot() {
 }
 
 function login(input: LoginInput) {
-  emit({
+  const nextState: AuthState = {
+    isHydrated: true,
     user: {
       ...mockUser,
       email: input.email.trim() || mockUser.email,
     },
-  });
+  };
+
+  emit(nextState);
+  void saveAuthState(nextState);
 }
 
 function register(input: RegisterInput) {
-  emit({
+  const nextState: AuthState = {
+    isHydrated: true,
     user: {
       ...mockUser,
       email: input.email.trim() || mockUser.email,
@@ -64,12 +74,36 @@ function register(input: RegisterInput) {
       id: `user-local-${Date.now()}`,
       lastName: input.lastName.trim() || mockUser.lastName,
     },
-  });
+  };
+
+  emit(nextState);
+  void saveAuthState(nextState);
 }
 
 function logout() {
-  emit({ user: null });
+  const nextState: AuthState = {
+    isHydrated: true,
+    user: null,
+  };
+
+  emit(nextState);
+  void removeStoredJson(AUTH_STORAGE_KEY);
 }
+
+async function hydrateAuthState() {
+  const storedState = await loadStoredJson<AuthState>(AUTH_STORAGE_KEY);
+
+  emit({
+    isHydrated: true,
+    user: storedState?.user ?? null,
+  });
+}
+
+async function saveAuthState(nextState: AuthState) {
+  await saveStoredJson<AuthState>(AUTH_STORAGE_KEY, nextState);
+}
+
+void hydrateAuthState();
 
 function buildStore(snapshot: AuthState): AuthStore {
   return {

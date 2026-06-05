@@ -1,9 +1,13 @@
 import { useSyncExternalStore } from "react";
 
+import { loadStoredJson, removeStoredJson, saveStoredJson } from "@/lib/storage";
 import type { Exercise } from "@/types/exercise";
 import type { Workout, WorkoutSet } from "@/types/workout";
 
+const ACTIVE_WORKOUT_STORAGE_KEY = "overload.activeWorkout.v1";
+
 type ActiveWorkoutState = {
+  isHydrated: boolean;
   activeWorkout: Workout | null;
 };
 
@@ -31,6 +35,7 @@ type ActiveWorkoutStore = ActiveWorkoutState & {
 };
 
 let state: ActiveWorkoutState = {
+  isHydrated: false,
   activeWorkout: null,
 };
 
@@ -68,6 +73,11 @@ function emit(nextState: ActiveWorkoutState) {
   listeners.forEach((listener) => listener());
 }
 
+function emitAndPersist(nextState: ActiveWorkoutState) {
+  emit(nextState);
+  void saveActiveWorkoutState(nextState);
+}
+
 function subscribe(listener: () => void) {
   listeners.add(listener);
   return () => listeners.delete(listener);
@@ -82,7 +92,10 @@ function updateActiveWorkout(updater: (workout: Workout) => Workout) {
     return;
   }
 
-  emit({ activeWorkout: updater(state.activeWorkout) });
+  emitAndPersist({
+    activeWorkout: updater(state.activeWorkout),
+    isHydrated: true,
+  });
 }
 
 function startWorkout(sourceWorkout?: Workout) {
@@ -98,7 +111,10 @@ function startWorkout(sourceWorkout?: Workout) {
         status: "active" as const,
       };
 
-  emit({ activeWorkout });
+  emitAndPersist({
+    activeWorkout,
+    isHydrated: true,
+  });
   return activeWorkout;
 }
 
@@ -214,12 +230,18 @@ function finishWorkout() {
     status: "completed",
   };
 
-  emit({ activeWorkout: null });
+  emitAndPersist({
+    activeWorkout: null,
+    isHydrated: true,
+  });
   return completedWorkout;
 }
 
 function resetWorkout() {
-  emit({ activeWorkout: null });
+  emitAndPersist({
+    activeWorkout: null,
+    isHydrated: true,
+  });
 }
 
 function renumberSets(sets: WorkoutSet[]) {
@@ -243,6 +265,29 @@ function buildStore(snapshot: ActiveWorkoutState): ActiveWorkoutStore {
     resetWorkout,
   };
 }
+
+async function hydrateActiveWorkoutState() {
+  const storedState = await loadStoredJson<ActiveWorkoutState>(ACTIVE_WORKOUT_STORAGE_KEY);
+
+  emit({
+    activeWorkout: storedState?.activeWorkout ?? null,
+    isHydrated: true,
+  });
+}
+
+async function saveActiveWorkoutState(nextState: ActiveWorkoutState) {
+  if (nextState.activeWorkout) {
+    await saveStoredJson<ActiveWorkoutState>(ACTIVE_WORKOUT_STORAGE_KEY, {
+      activeWorkout: nextState.activeWorkout,
+      isHydrated: true,
+    });
+    return;
+  }
+
+  await removeStoredJson(ACTIVE_WORKOUT_STORAGE_KEY);
+}
+
+void hydrateActiveWorkoutState();
 
 export function useActiveWorkoutStore() {
   const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);

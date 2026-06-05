@@ -1,9 +1,13 @@
 import { useSyncExternalStore } from "react";
 
 import { mockWorkouts } from "@/features/workouts/mockWorkouts";
+import { loadStoredJson, saveStoredJson } from "@/lib/storage";
 import type { Workout } from "@/types/workout";
 
+const WORKOUT_HISTORY_STORAGE_KEY = "overload.workoutHistory.v1";
+
 type WorkoutHistoryState = {
+  isHydrated: boolean;
   workouts: Workout[];
 };
 
@@ -18,6 +22,7 @@ type WorkoutHistoryStore = WorkoutHistoryState & {
 type WorkoutHistoryUpdate = Partial<Pick<Workout, "date" | "notes" | "title">>;
 
 let state: WorkoutHistoryState = {
+  isHydrated: false,
   workouts: mockWorkouts,
 };
 
@@ -32,6 +37,11 @@ function emit(nextState: WorkoutHistoryState) {
   listeners.forEach((listener) => listener());
 }
 
+function emitAndPersist(nextState: WorkoutHistoryState) {
+  emit(nextState);
+  void saveWorkoutHistoryState(nextState);
+}
+
 function subscribe(listener: () => void) {
   listeners.add(listener);
   return () => listeners.delete(listener);
@@ -42,7 +52,8 @@ function getSnapshot() {
 }
 
 function addCompletedWorkout(workout: Workout) {
-  emit({
+  emitAndPersist({
+    isHydrated: true,
     workouts: [
       {
         ...workout,
@@ -54,7 +65,8 @@ function addCompletedWorkout(workout: Workout) {
 }
 
 function deleteWorkout(workoutId: string) {
-  emit({
+  emitAndPersist({
+    isHydrated: true,
     workouts: state.workouts.filter((workout) => workout.id !== workoutId),
   });
 }
@@ -71,7 +83,8 @@ function updateWorkout(workoutId: string, updates: WorkoutHistoryUpdate) {
     ...updates,
   };
 
-  emit({
+  emitAndPersist({
+    isHydrated: true,
     workouts: state.workouts.map((currentWorkout) =>
       currentWorkout.id === workoutId ? updatedWorkout : currentWorkout,
     ),
@@ -108,6 +121,24 @@ function duplicateWorkout(workoutId: string): Workout | null {
 function getWorkoutById(workoutId: string) {
   return state.workouts.find((workout) => workout.id === workoutId);
 }
+
+async function hydrateWorkoutHistoryState() {
+  const storedState = await loadStoredJson<WorkoutHistoryState>(WORKOUT_HISTORY_STORAGE_KEY);
+
+  emit({
+    isHydrated: true,
+    workouts: storedState?.workouts ?? mockWorkouts,
+  });
+}
+
+async function saveWorkoutHistoryState(nextState: WorkoutHistoryState) {
+  await saveStoredJson<WorkoutHistoryState>(WORKOUT_HISTORY_STORAGE_KEY, {
+    isHydrated: true,
+    workouts: nextState.workouts,
+  });
+}
+
+void hydrateWorkoutHistoryState();
 
 function buildStore(snapshot: WorkoutHistoryState): WorkoutHistoryStore {
   return {

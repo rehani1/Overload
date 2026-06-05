@@ -19,6 +19,7 @@ import type { WorkoutSet } from "@/types/workout";
 export default function ActiveWorkoutScreen() {
   const {
     activeWorkout,
+    isHydrated,
     startWorkout,
     setWorkoutTitle,
     addExercise,
@@ -32,10 +33,10 @@ export default function ActiveWorkoutScreen() {
   const [isPickerVisible, setIsPickerVisible] = useState(false);
 
   useEffect(() => {
-    if (!activeWorkout) {
+    if (isHydrated && !activeWorkout) {
       startWorkout();
     }
-  }, [activeWorkout, startWorkout]);
+  }, [activeWorkout, isHydrated, startWorkout]);
 
   function handleFinishWorkout() {
     const completedWorkout = finishWorkout();
@@ -47,7 +48,7 @@ export default function ActiveWorkoutScreen() {
     router.replace("../workouts");
   }
 
-  if (!activeWorkout) {
+  if (!isHydrated || !activeWorkout) {
     return (
       <Screen>
         <EmptyState title="Starting workout" message="Preparing a blank session." />
