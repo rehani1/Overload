@@ -1,29 +1,28 @@
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { isApiConfigured } from "@/api/client";
 import {
   deleteWorkout as deleteWorkoutRequest,
   updateWorkout as updateWorkoutRequest,
 } from "@/api/workoutApi";
-import { isApiConfigured } from "@/api/client";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { EmptyState } from "@/components/EmptyState";
-import { Header } from "@/components/Header";
-import { Screen } from "@/components/Screen";
 import { colors } from "@/constants/colors";
 import { spacing } from "@/constants/spacing";
 import { typography } from "@/constants/typography";
-import { WorkoutCalendarEditor } from "@/features/workouts/WorkoutCalendarEditor";
 import { useWorkoutHistoryStore } from "@/store/useWorkoutHistoryStore";
 import type { Workout } from "@/types/workout";
+
+import { WorkoutCalendarEditor } from "./WorkoutCalendarEditor";
 
 type SyncState = {
   kind: "idle" | "pending" | "success" | "error";
   message: string;
 };
 
-export default function WorkoutsScreen() {
+export function WorkoutCalendar() {
   const { deleteWorkout, restoreWorkout, updateWorkout, workouts } = useWorkoutHistoryStore();
   const completedWorkouts = workouts.filter((workout) => workout.status === "completed");
   const initialDate = completedWorkouts[0]?.date ?? new Date().toISOString();
@@ -168,109 +167,105 @@ export default function WorkoutsScreen() {
   }
 
   return (
-    <Screen>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Header title="Calendar" subtitle="Edit completed sessions without turning mobile into analytics." />
+    <View style={styles.content}>
+      <Card title="Sync Status">
+        <Text style={[styles.syncText, syncState.kind === "error" && styles.errorText]}>
+          {syncState.message}
+        </Text>
+      </Card>
 
-        <Card title="Sync Status">
-          <Text style={[styles.syncText, syncState.kind === "error" && styles.errorText]}>
-            {syncState.message}
-          </Text>
+      {completedWorkouts.length === 0 ? (
+        <Card title="Workout Calendar">
+          <EmptyState title="No completed workouts" message="Finish a workout to see it here." />
         </Card>
+      ) : (
+        <>
+          <Card title={formatMonthTitle(visibleMonthDate)}>
+            <View style={styles.monthNav}>
+              <Button onPress={() => handleMonthChange(-1)} variant="secondary">
+                Previous
+              </Button>
+              <Button onPress={() => handleMonthChange(1)} variant="secondary">
+                Next
+              </Button>
+            </View>
 
-        {completedWorkouts.length === 0 ? (
-          <Card title="Workout Calendar">
-            <EmptyState title="No completed workouts" message="Finish a workout to see it here." />
+            <View style={styles.weekdayRow}>
+              {weekdays.map((weekday) => (
+                <Text key={weekday} style={styles.weekdayText}>
+                  {weekday}
+                </Text>
+              ))}
+            </View>
+
+            <View style={styles.calendarGrid}>
+              {calendarDays.map((day, index) => {
+                const workoutsForDay = day ? workoutsByDate.get(day.dateKey) ?? [] : [];
+                const isSelected = day?.dateKey === selectedDateKey;
+
+                return (
+                  <Pressable
+                    accessibilityRole={day ? "button" : undefined}
+                    disabled={!day}
+                    key={day?.dateKey ?? `blank-${index}`}
+                    onPress={() => {
+                      if (day) {
+                        setSelectedDateKey(day.dateKey);
+                        handleCancelEdit();
+                      }
+                    }}
+                    style={({ pressed }) => [
+                      styles.dayCell,
+                      !day && styles.emptyDayCell,
+                      isSelected && styles.selectedDayCell,
+                      pressed && day && styles.pressed,
+                    ]}
+                  >
+                    {day ? (
+                      <>
+                        <Text style={[styles.dayNumber, isSelected && styles.selectedDayText]}>
+                          {day.dayOfMonth}
+                        </Text>
+                        {workoutsForDay.length > 0 ? <View style={styles.workoutDot} /> : null}
+                      </>
+                    ) : null}
+                  </Pressable>
+                );
+              })}
+            </View>
           </Card>
-        ) : (
-          <>
-            <Card title={formatMonthTitle(visibleMonthDate)}>
-              <View style={styles.monthNav}>
-                <Button onPress={() => handleMonthChange(-1)} variant="secondary">
-                  Previous
-                </Button>
-                <Button onPress={() => handleMonthChange(1)} variant="secondary">
-                  Next
-                </Button>
-              </View>
 
-              <View style={styles.weekdayRow}>
-                {weekdays.map((weekday) => (
-                  <Text key={weekday} style={styles.weekdayText}>
-                    {weekday}
-                  </Text>
+          <Card title={formatSelectedDate(selectedDateKey)}>
+            {selectedWorkouts.length === 0 ? (
+              <Text style={styles.mutedText}>No completed session on this date.</Text>
+            ) : (
+              <View style={styles.sessionList}>
+                {selectedWorkouts.map((workout) => (
+                  <WorkoutCalendarItem
+                    deleteCandidateId={deleteCandidateId}
+                    draftWorkout={draftWorkout}
+                    editingWorkoutId={editingWorkoutId}
+                    key={workout.id}
+                    onCancelDelete={handleCancelDelete}
+                    onCancelEdit={handleCancelEdit}
+                    onConfirmDelete={() => handleConfirmDelete(workout)}
+                    onRequestDelete={() => setDeleteCandidateId(workout.id)}
+                    onSave={() => handleSaveWorkout(workout)}
+                    onStartEdit={() => handleStartEdit(workout)}
+                    onUpdateDraftWorkout={(updater) =>
+                      setDraftWorkout((currentDraft) =>
+                        currentDraft ? updater(currentDraft) : currentDraft,
+                      )
+                    }
+                    workout={workout}
+                  />
                 ))}
               </View>
-
-              <View style={styles.calendarGrid}>
-                {calendarDays.map((day, index) => {
-                  const workoutsForDay = day ? workoutsByDate.get(day.dateKey) ?? [] : [];
-                  const isSelected = day?.dateKey === selectedDateKey;
-
-                  return (
-                    <Pressable
-                      accessibilityRole={day ? "button" : undefined}
-                      disabled={!day}
-                      key={day?.dateKey ?? `blank-${index}`}
-                      onPress={() => {
-                        if (day) {
-                          setSelectedDateKey(day.dateKey);
-                          handleCancelEdit();
-                        }
-                      }}
-                      style={({ pressed }) => [
-                        styles.dayCell,
-                        !day && styles.emptyDayCell,
-                        isSelected && styles.selectedDayCell,
-                        pressed && day && styles.pressed,
-                      ]}
-                    >
-                      {day ? (
-                        <>
-                          <Text style={[styles.dayNumber, isSelected && styles.selectedDayText]}>
-                            {day.dayOfMonth}
-                          </Text>
-                          {workoutsForDay.length > 0 ? <View style={styles.workoutDot} /> : null}
-                        </>
-                      ) : null}
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </Card>
-
-            <Card title={formatSelectedDate(selectedDateKey)}>
-              {selectedWorkouts.length === 0 ? (
-                <Text style={styles.mutedText}>No completed session on this date.</Text>
-              ) : (
-                <View style={styles.sessionList}>
-                  {selectedWorkouts.map((workout) => (
-                    <WorkoutCalendarItem
-                      deleteCandidateId={deleteCandidateId}
-                      draftWorkout={draftWorkout}
-                      editingWorkoutId={editingWorkoutId}
-                      key={workout.id}
-                      onCancelDelete={handleCancelDelete}
-                      onCancelEdit={handleCancelEdit}
-                      onConfirmDelete={() => handleConfirmDelete(workout)}
-                      onRequestDelete={() => setDeleteCandidateId(workout.id)}
-                      onSave={() => handleSaveWorkout(workout)}
-                      onStartEdit={() => handleStartEdit(workout)}
-                      onUpdateDraftWorkout={(updater) =>
-                        setDraftWorkout((currentDraft) =>
-                          currentDraft ? updater(currentDraft) : currentDraft,
-                        )
-                      }
-                      workout={workout}
-                    />
-                  ))}
-                </View>
-              )}
-            </Card>
-          </>
-        )}
-      </ScrollView>
-    </Screen>
+            )}
+          </Card>
+        </>
+      )}
+    </View>
   );
 }
 
@@ -463,7 +458,6 @@ function parseMonthKey(monthKey: string) {
 const styles = StyleSheet.create({
   content: {
     gap: spacing.lg,
-    paddingBottom: spacing.xxl,
   },
   syncText: {
     color: colors.textMuted,

@@ -45,7 +45,7 @@ export default function ActiveWorkoutScreen() {
       addCompletedWorkout(completedWorkout);
     }
 
-    router.replace("../workouts");
+    router.replace("../home");
   }
 
   if (!isHydrated || !activeWorkout) {
