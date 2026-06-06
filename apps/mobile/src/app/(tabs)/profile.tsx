@@ -145,7 +145,7 @@ function createStyles(colors: AppColors) {
   },
   profileHero: {
     alignItems: "center",
-    backgroundColor: colors.primary,
+    backgroundColor: colors.heroBackground,
     borderColor: "rgba(255, 252, 246, 0.18)",
     borderRadius: 32,
     borderWidth: 1,

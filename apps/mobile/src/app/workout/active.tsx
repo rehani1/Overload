@@ -216,7 +216,7 @@ function createStyles(colors: AppColors) {
     paddingBottom: spacing.xxl,
   },
   hero: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.heroBackground,
     borderColor: "rgba(255, 252, 246, 0.18)",
     borderRadius: 34,
     borderWidth: 1,

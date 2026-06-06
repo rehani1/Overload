@@ -773,15 +773,15 @@ function createStyles(colors: AppColors) {
     lineHeight: typography.lineHeights.caption,
   },
   calendarSurface: {
-    backgroundColor: colors.surfaceElevated,
-    borderColor: colors.border,
+    backgroundColor: colors.calendarSurface,
+    borderColor: colors.calendarGridBorder,
     borderRadius: 24,
     borderWidth: 1,
     overflow: "hidden",
   },
   weekdayRow: {
     flexDirection: "row",
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.calendarGridBorder,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   weekdayText: {
@@ -796,17 +796,17 @@ function createStyles(colors: AppColors) {
     textTransform: "uppercase",
   },
   calendarGrid: {
-    backgroundColor: colors.surfaceElevated,
+    backgroundColor: colors.calendarSurface,
   },
   weekRow: {
     flexDirection: "row",
   },
   dayCell: {
     alignItems: "flex-end",
-    backgroundColor: colors.surfaceElevated,
-    borderBottomColor: colors.border,
+    backgroundColor: colors.calendarSurface,
+    borderBottomColor: colors.calendarGridBorder,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
+    borderColor: colors.calendarGridBorder,
     borderRightWidth: StyleSheet.hairlineWidth,
     flex: 1,
     gap: spacing.xs,
@@ -819,7 +819,7 @@ function createStyles(colors: AppColors) {
     borderRightWidth: 0,
   },
   outsideMonthDayCell: {
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: colors.calendarOutsideSurface,
   },
   selectedDayCell: {
     backgroundColor: colors.accentMuted,
