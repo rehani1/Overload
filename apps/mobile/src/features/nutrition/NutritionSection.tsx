@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { isApiConfigured } from "@/api/client";
 import {
@@ -74,8 +74,10 @@ export function NutritionSection({
   const [entryDraft, setEntryDraft] = useState<NutritionEntryFormState>(
     getEmptyEntryFormState(),
   );
-  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
+  const [activeEntryModal, setActiveEntryModal] = useState<"add" | "edit" | null>(null);
+  const [editingEntry, setEditingEntry] = useState<NutritionEntry | null>(null);
   const [editDraft, setEditDraft] = useState<NutritionEntryFormState | null>(null);
+  const [isTargetModalVisible, setIsTargetModalVisible] = useState(false);
   const [syncState, setSyncState] = useState<SyncState>({
     kind: "idle",
     message: isApiConfigured
@@ -99,6 +101,7 @@ export function NutritionSection({
 
     const addedEntry = addEntry(draft);
     setEntryDraft(getEmptyEntryFormState(draft.mealType));
+    setActiveEntryModal(null);
     setSyncState({
       kind: "pending",
       message: "Nutrition entry saved locally. Syncing entry...",
@@ -223,7 +226,7 @@ export function NutritionSection({
         kind: "error",
         message: "Enter valid non-negative nutrition targets.",
       });
-      return;
+      return false;
     }
 
     const originalTarget = target;
@@ -238,7 +241,7 @@ export function NutritionSection({
         kind: "success",
         message: "Nutrition target saved locally. Backend sync is not configured yet.",
       });
-      return;
+      return true;
     }
 
     try {
@@ -247,6 +250,7 @@ export function NutritionSection({
         kind: "success",
         message: "Nutrition target synced.",
       });
+      return true;
     } catch {
       updateTarget({
         carbsGrams: originalTarget.carbsGrams,
@@ -258,6 +262,7 @@ export function NutritionSection({
         kind: "error",
         message: "Target sync failed. Local target was rolled back.",
       });
+      return true;
     }
   }
 
@@ -267,33 +272,41 @@ export function NutritionSection({
   }
 
   function startEntryEdit(entry: NutritionEntry) {
-    setEditingEntryId(entry.id);
+    setEditingEntry(entry);
     setEditDraft(getEntryFormState(entry));
+    setActiveEntryModal("edit");
   }
 
   function cancelEntryEdit() {
-    setEditingEntryId(null);
+    setActiveEntryModal(null);
+    setEditingEntry(null);
     setEditDraft(null);
+  }
+
+  function openAddEntryModal() {
+    setEntryDraft(getEmptyEntryFormState());
+    setActiveEntryModal("add");
   }
 
   return (
     <View style={styles.content}>
-      {showIntroCard ? (
-        <Card title="Nutrition">
-          <Text style={styles.mutedText}>Capture meals quickly; detailed trends belong on web.</Text>
-          <Text style={[styles.mutedText, syncState.kind === "error" && styles.errorText]}>
-            {syncState.message}
-          </Text>
-        </Card>
-      ) : null}
-
       {!isHydrated ? (
         <EmptyState title="Loading nutrition" message="Preparing local nutrition history." />
       ) : (
         <>
-          <Card title={showDateControls ? formatSelectedDate(selectedDate) : "Nutrition Summary"}>
+          <Card title="Nutrition">
+            {showIntroCard ? (
+              <Text style={styles.mutedText}>Capture meals quickly; detailed trends belong on web.</Text>
+            ) : null}
+            {syncState.kind !== "idle" ? (
+              <Text style={[styles.mutedText, syncState.kind === "error" && styles.errorText]}>
+                {syncState.message}
+              </Text>
+            ) : null}
+
             {showDateControls ? (
               <View style={styles.actionRow}>
+                <Text style={styles.sectionLabel}>{formatSelectedDate(selectedDate)}</Text>
                 <Button onPress={() => handleDateChange(-1)} variant="secondary">
                   Previous Day
                 </Button>
@@ -329,29 +342,16 @@ export function NutritionSection({
                 value={totals.fatGrams}
               />
             </View>
-          </Card>
 
-          <NutritionTargetCard
-            key={target.updatedAt}
-            onSave={handleSaveTarget}
-            target={target}
-          />
+            <View style={styles.actionRow}>
+              <Button onPress={openAddEntryModal}>Add Food</Button>
+              <Button onPress={() => setIsTargetModalVisible(true)} variant="secondary">
+                Edit Targets
+              </Button>
+            </View>
 
-          <Card title="Add Food">
-            <NutritionEntryForm
-              draft={entryDraft}
-              onChange={(updates) =>
-                setEntryDraft((currentDraft) => ({
-                  ...currentDraft,
-                  ...updates,
-                }))
-              }
-              onSubmit={handleAddEntry}
-              submitLabel="Add Food"
-            />
-          </Card>
+            <Text style={styles.sectionLabel}>Entries</Text>
 
-          <Card title="Meals">
             {entriesForDate.length === 0 ? (
               <EmptyState
                 title="No nutrition entries"
@@ -361,29 +361,72 @@ export function NutritionSection({
               <View style={styles.entryList}>
                 {entriesForDate.map((entry) => (
                   <NutritionEntryItem
-                    draft={editDraft}
                     entry={entry}
-                    isEditing={editingEntryId === entry.id && editDraft !== null}
                     key={entry.id}
-                    onCancelEdit={cancelEntryEdit}
-                    onDelete={() => handleDeleteEntry(entry)}
-                    onSave={() => handleSaveEntry(entry)}
                     onStartEdit={() => startEntryEdit(entry)}
-                    onUpdateDraft={(updates) =>
-                      setEditDraft((currentDraft) =>
-                        currentDraft
-                          ? {
-                              ...currentDraft,
-                              ...updates,
-                            }
-                          : currentDraft,
-                      )
-                    }
                   />
                 ))}
               </View>
             )}
           </Card>
+
+          <NutritionEntryModal
+            draft={activeEntryModal === "edit" && editDraft ? editDraft : entryDraft}
+            mode={activeEntryModal}
+            onChange={(updates) => {
+              if (activeEntryModal === "edit") {
+                setEditDraft((currentDraft) =>
+                  currentDraft
+                    ? {
+                        ...currentDraft,
+                        ...updates,
+                      }
+                    : currentDraft,
+                );
+                return;
+              }
+
+              setEntryDraft((currentDraft) => ({
+                ...currentDraft,
+                ...updates,
+              }));
+            }}
+            onClose={() => {
+              setActiveEntryModal(null);
+              cancelEntryEdit();
+            }}
+            onDelete={
+              editingEntry
+                ? () => {
+                    void handleDeleteEntry(editingEntry);
+                  }
+                : undefined
+            }
+            onSubmit={() => {
+              if (activeEntryModal === "edit" && editingEntry) {
+                void handleSaveEntry(editingEntry);
+                return;
+              }
+
+              void handleAddEntry();
+            }}
+          />
+
+          <NutritionTargetModal
+            isVisible={isTargetModalVisible}
+            key={target.updatedAt}
+            onClose={() => setIsTargetModalVisible(false)}
+            onSave={(targetFormState) => {
+              void (async () => {
+                const didSave = await handleSaveTarget(targetFormState);
+
+                if (didSave) {
+                  setIsTargetModalVisible(false);
+                }
+              })();
+            }}
+            target={target}
+          />
         </>
       )}
     </View>
@@ -413,70 +456,100 @@ function NutritionMetric({ label, target, unit, value }: NutritionMetricProps) {
   );
 }
 
-type NutritionTargetCardProps = {
+type NutritionTargetModalProps = {
+  isVisible: boolean;
+  onClose: () => void;
   onSave: (targetFormState: NutritionTargetFormState) => void;
   target: NutritionTarget;
 };
 
-function NutritionTargetCard({ onSave, target }: NutritionTargetCardProps) {
+function NutritionTargetModal({
+  isVisible,
+  onClose,
+  onSave,
+  target,
+}: NutritionTargetModalProps) {
   const [targetDraft, setTargetDraft] = useState<NutritionTargetFormState>(
     getTargetFormState(target),
   );
 
   return (
-    <Card title="Daily Targets">
-      <View style={styles.inputGrid}>
-        <Input
-          keyboardType="numeric"
-          label="Calories"
-          onChangeText={(value) =>
-            setTargetDraft((currentDraft) => ({
-              ...currentDraft,
-              dailyCalories: value,
-            }))
-          }
-          placeholder="2400"
-          value={targetDraft.dailyCalories}
-        />
-        <Input
-          keyboardType="decimal-pad"
-          label="Protein"
-          onChangeText={(value) =>
-            setTargetDraft((currentDraft) => ({
-              ...currentDraft,
-              proteinGrams: value,
-            }))
-          }
-          placeholder="180"
-          value={targetDraft.proteinGrams}
-        />
-        <Input
-          keyboardType="decimal-pad"
-          label="Carbs"
-          onChangeText={(value) =>
-            setTargetDraft((currentDraft) => ({
-              ...currentDraft,
-              carbsGrams: value,
-            }))
-          }
-          placeholder="260"
-          value={targetDraft.carbsGrams}
-        />
-        <Input
-          keyboardType="decimal-pad"
-          label="Fat"
-          onChangeText={(value) =>
-            setTargetDraft((currentDraft) => ({
-              ...currentDraft,
-              fatGrams: value,
-            }))
-          }
-          placeholder="75"
-          value={targetDraft.fatGrams}
-        />
+    <Modal
+      animationType="slide"
+      onRequestClose={onClose}
+      presentationStyle="pageSheet"
+      visible={isVisible}
+    >
+      <View style={styles.modalScreen}>
+        <View style={styles.modalHeader}>
+          <View style={styles.modalTitleGroup}>
+            <Text style={styles.modalEyebrow}>Nutrition</Text>
+            <Text style={styles.modalTitle}>Edit Targets</Text>
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            onPress={onClose}
+            style={({ pressed }) => [styles.closeButton, pressed && styles.pressed]}
+          >
+            <Text style={styles.closeButtonText}>Close</Text>
+          </Pressable>
+        </View>
+
+        <ScrollView contentContainerStyle={styles.modalContent} showsVerticalScrollIndicator={false}>
+          <View style={styles.inputGrid}>
+            <Input
+              keyboardType="numeric"
+              label="Calories"
+              onChangeText={(value) =>
+                setTargetDraft((currentDraft) => ({
+                  ...currentDraft,
+                  dailyCalories: value,
+                }))
+              }
+              placeholder="2400"
+              value={targetDraft.dailyCalories}
+            />
+            <Input
+              keyboardType="decimal-pad"
+              label="Protein"
+              onChangeText={(value) =>
+                setTargetDraft((currentDraft) => ({
+                  ...currentDraft,
+                  proteinGrams: value,
+                }))
+              }
+              placeholder="180"
+              value={targetDraft.proteinGrams}
+            />
+            <Input
+              keyboardType="decimal-pad"
+              label="Carbs"
+              onChangeText={(value) =>
+                setTargetDraft((currentDraft) => ({
+                  ...currentDraft,
+                  carbsGrams: value,
+                }))
+              }
+              placeholder="260"
+              value={targetDraft.carbsGrams}
+            />
+            <Input
+              keyboardType="decimal-pad"
+              label="Fat"
+              onChangeText={(value) =>
+                setTargetDraft((currentDraft) => ({
+                  ...currentDraft,
+                  fatGrams: value,
+                }))
+              }
+              placeholder="75"
+              value={targetDraft.fatGrams}
+            />
+          </View>
+          <Button onPress={() => onSave(targetDraft)}>Save Targets</Button>
+        </ScrollView>
       </View>
-      <Button onPress={() => onSave(targetDraft)}>Save Targets</Button>
-    </Card>
+    </Modal>
   );
 }
 
@@ -486,6 +559,66 @@ type NutritionEntryFormProps = {
   onSubmit: () => void;
   submitLabel: string;
 };
+
+type NutritionEntryModalProps = {
+  draft: NutritionEntryFormState;
+  mode: "add" | "edit" | null;
+  onChange: (updates: Partial<NutritionEntryFormState>) => void;
+  onClose: () => void;
+  onDelete?: () => void;
+  onSubmit: () => void;
+};
+
+function NutritionEntryModal({
+  draft,
+  mode,
+  onChange,
+  onClose,
+  onDelete,
+  onSubmit,
+}: NutritionEntryModalProps) {
+  const isEditing = mode === "edit";
+
+  return (
+    <Modal
+      animationType="slide"
+      onRequestClose={onClose}
+      presentationStyle="pageSheet"
+      visible={mode !== null}
+    >
+      <View style={styles.modalScreen}>
+        <View style={styles.modalHeader}>
+          <View style={styles.modalTitleGroup}>
+            <Text style={styles.modalEyebrow}>Nutrition</Text>
+            <Text style={styles.modalTitle}>{isEditing ? "Edit Food" : "Add Food"}</Text>
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            onPress={onClose}
+            style={({ pressed }) => [styles.closeButton, pressed && styles.pressed]}
+          >
+            <Text style={styles.closeButtonText}>Close</Text>
+          </Pressable>
+        </View>
+
+        <ScrollView contentContainerStyle={styles.modalContent} showsVerticalScrollIndicator={false}>
+          <NutritionEntryForm
+            draft={draft}
+            onChange={onChange}
+            onSubmit={onSubmit}
+            submitLabel={isEditing ? "Save Food" : "Add Food"}
+          />
+
+          {isEditing && onDelete ? (
+            <Button onPress={onDelete} variant="danger">
+              Delete Food
+            </Button>
+          ) : null}
+        </ScrollView>
+      </View>
+    </Modal>
+  );
+}
 
 function NutritionEntryForm({
   draft,
@@ -576,25 +709,13 @@ function NutritionEntryForm({
 }
 
 type NutritionEntryItemProps = {
-  draft: NutritionEntryFormState | null;
   entry: NutritionEntry;
-  isEditing: boolean;
-  onCancelEdit: () => void;
-  onDelete: () => void;
-  onSave: () => void;
   onStartEdit: () => void;
-  onUpdateDraft: (updates: Partial<NutritionEntryFormState>) => void;
 };
 
 function NutritionEntryItem({
-  draft,
   entry,
-  isEditing,
-  onCancelEdit,
-  onDelete,
-  onSave,
   onStartEdit,
-  onUpdateDraft,
 }: NutritionEntryItemProps) {
   return (
     <View style={styles.entryItem}>
@@ -608,28 +729,11 @@ function NutritionEntryItem({
       </Text>
       {entry.notes ? <Text style={styles.mutedText}>{entry.notes}</Text> : null}
 
-      {isEditing && draft ? (
-        <View style={styles.editBox}>
-          <NutritionEntryForm
-            draft={draft}
-            onChange={onUpdateDraft}
-            onSubmit={onSave}
-            submitLabel="Save Changes"
-          />
-          <Button onPress={onCancelEdit} variant="secondary">
-            Cancel
-          </Button>
-        </View>
-      ) : (
-        <View style={styles.actionRow}>
-          <Button onPress={onStartEdit} variant="secondary">
-            Edit
-          </Button>
-          <Button onPress={onDelete} variant="danger">
-            Delete
-          </Button>
-        </View>
-      )}
+      <View style={styles.actionRow}>
+        <Button onPress={onStartEdit} variant="secondary">
+          Edit
+        </Button>
+      </View>
     </View>
   );
 }
@@ -854,6 +958,14 @@ const styles = StyleSheet.create({
     lineHeight: typography.lineHeights.caption,
     textTransform: "uppercase",
   },
+  sectionLabel: {
+    color: colors.textMuted,
+    fontSize: typography.sizes.caption,
+    fontWeight: typography.weights.medium,
+    lineHeight: typography.lineHeights.caption,
+    marginTop: spacing.sm,
+    textTransform: "uppercase",
+  },
   mealTypeRow: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -900,6 +1012,57 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.title,
     fontWeight: typography.weights.bold,
     lineHeight: typography.lineHeights.title,
+  },
+  modalScreen: {
+    backgroundColor: colors.background,
+    flex: 1,
+  },
+  modalHeader: {
+    alignItems: "flex-start",
+    borderBottomColor: colors.border,
+    borderBottomWidth: 1,
+    flexDirection: "row",
+    gap: spacing.lg,
+    justifyContent: "space-between",
+    paddingBottom: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xxl,
+  },
+  modalTitleGroup: {
+    flex: 1,
+    gap: spacing.xs,
+  },
+  modalEyebrow: {
+    color: colors.textMuted,
+    fontSize: typography.sizes.caption,
+    fontWeight: typography.weights.medium,
+    lineHeight: typography.lineHeights.caption,
+    textTransform: "uppercase",
+  },
+  modalTitle: {
+    color: colors.text,
+    fontSize: typography.sizes.title,
+    fontWeight: typography.weights.bold,
+    lineHeight: typography.lineHeights.title,
+  },
+  modalContent: {
+    gap: spacing.lg,
+    padding: spacing.lg,
+    paddingBottom: spacing.xxl,
+  },
+  closeButton: {
+    backgroundColor: colors.surfaceMuted,
+    borderColor: colors.border,
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  closeButtonText: {
+    color: colors.text,
+    fontSize: typography.sizes.body,
+    fontWeight: typography.weights.semibold,
+    lineHeight: typography.lineHeights.body,
   },
   mutedText: {
     color: colors.textMuted,

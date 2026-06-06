@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { isApiConfigured } from "@/api/client";
 import {
@@ -149,8 +149,8 @@ type WorkoutDateDetailsProps = {
 export function WorkoutDateDetails({ selectedDateKey }: WorkoutDateDetailsProps) {
   const { deleteWorkout, restoreWorkout, updateWorkout, workouts } = useWorkoutHistoryStore();
   const completedWorkouts = workouts.filter((workout) => workout.status === "completed");
-  const [editingWorkoutId, setEditingWorkoutId] = useState<string | null>(null);
-  const [deleteCandidateId, setDeleteCandidateId] = useState<string | null>(null);
+  const [editingWorkout, setEditingWorkout] = useState<Workout | null>(null);
+  const [isDeletePending, setIsDeletePending] = useState(false);
   const [draftWorkout, setDraftWorkout] = useState<Workout | null>(null);
   const [syncState, setSyncState] = useState<SyncState>({
     kind: "idle",
@@ -161,14 +161,10 @@ export function WorkoutDateDetails({ selectedDateKey }: WorkoutDateDetailsProps)
   const workoutsByDate = groupWorkoutsByDate(completedWorkouts);
   const selectedWorkouts = workoutsByDate.get(selectedDateKey) ?? [];
 
-  function handleCancelDelete() {
-    setDeleteCandidateId(null);
-  }
-
   function handleCancelEdit() {
+    setEditingWorkout(null);
     setDraftWorkout(null);
-    setEditingWorkoutId(null);
-    setDeleteCandidateId(null);
+    setIsDeletePending(false);
   }
 
   async function handleConfirmDelete(workout: Workout) {
@@ -203,8 +199,8 @@ export function WorkoutDateDetails({ selectedDateKey }: WorkoutDateDetailsProps)
   }
 
   function handleStartEdit(workout: Workout) {
-    setEditingWorkoutId(workout.id);
-    setDeleteCandidateId(null);
+    setEditingWorkout(workout);
+    setIsDeletePending(false);
     setDraftWorkout(cloneWorkout(workout));
   }
 
@@ -274,73 +270,99 @@ export function WorkoutDateDetails({ selectedDateKey }: WorkoutDateDetailsProps)
 
   return (
     <View style={styles.content}>
-      <Card title="Workout Sync">
-        <Text style={[styles.syncText, syncState.kind === "error" && styles.errorText]}>
-          {syncState.message}
-        </Text>
-      </Card>
-
-      <Card title="Workouts">
+      <Card title="Workout">
+        {syncState.kind !== "idle" ? (
+          <Text style={[styles.syncText, syncState.kind === "error" && styles.errorText]}>
+            {syncState.message}
+          </Text>
+        ) : null}
         {selectedWorkouts.length === 0 ? (
           <Text style={styles.mutedText}>No completed session on this date.</Text>
         ) : (
           <View style={styles.sessionList}>
             {selectedWorkouts.map((workout) => (
               <WorkoutCalendarItem
-                deleteCandidateId={deleteCandidateId}
-                draftWorkout={draftWorkout}
-                editingWorkoutId={editingWorkoutId}
                 key={workout.id}
-                onCancelDelete={handleCancelDelete}
-                onCancelEdit={handleCancelEdit}
-                onConfirmDelete={() => handleConfirmDelete(workout)}
-                onRequestDelete={() => setDeleteCandidateId(workout.id)}
-                onSave={() => handleSaveWorkout(workout)}
                 onStartEdit={() => handleStartEdit(workout)}
-                onUpdateDraftWorkout={(updater) =>
-                  setDraftWorkout((currentDraft) =>
-                    currentDraft ? updater(currentDraft) : currentDraft,
-                  )
-                }
                 workout={workout}
               />
             ))}
           </View>
         )}
       </Card>
+
+      <Modal
+        animationType="slide"
+        onRequestClose={handleCancelEdit}
+        presentationStyle="pageSheet"
+        visible={editingWorkout !== null}
+      >
+        <View style={styles.modalScreen}>
+          <View style={styles.modalHeader}>
+            <View style={styles.modalTitleGroup}>
+              <Text style={styles.modalEyebrow}>Workout</Text>
+              <Text style={styles.modalTitle}>
+                {editingWorkout ? `Edit ${editingWorkout.title}` : "Edit Workout"}
+              </Text>
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              onPress={handleCancelEdit}
+              style={({ pressed }) => [styles.closeButton, pressed && styles.pressed]}
+            >
+              <Text style={styles.closeButtonText}>Close</Text>
+            </Pressable>
+          </View>
+
+          <ScrollView contentContainerStyle={styles.modalContent} showsVerticalScrollIndicator={false}>
+            {editingWorkout && draftWorkout ? (
+              <>
+                <WorkoutCalendarEditor
+                  draftWorkout={draftWorkout}
+                  onCancel={handleCancelEdit}
+                  onDelete={() => setIsDeletePending(true)}
+                  onSave={() => handleSaveWorkout(editingWorkout)}
+                  onUpdateDraftWorkout={(updater) =>
+                    setDraftWorkout((currentDraft) =>
+                      currentDraft ? updater(currentDraft) : currentDraft,
+                    )
+                  }
+                />
+
+                {isDeletePending ? (
+                  <View style={styles.confirmationBox}>
+                    <Text style={styles.confirmationTitle}>Delete this workout?</Text>
+                    <Text style={styles.mutedText}>
+                      This removes the workout locally and syncs the delete when the backend is configured.
+                    </Text>
+                    <View style={styles.actionRow}>
+                      <Button onPress={() => handleConfirmDelete(editingWorkout)} variant="danger">
+                        Confirm Delete
+                      </Button>
+                      <Button onPress={() => setIsDeletePending(false)} variant="secondary">
+                        Keep Workout
+                      </Button>
+                    </View>
+                  </View>
+                ) : null}
+              </>
+            ) : null}
+          </ScrollView>
+        </View>
+      </Modal>
     </View>
   );
 }
 
 type WorkoutCalendarItemProps = {
-  deleteCandidateId: string | null;
-  draftWorkout: Workout | null;
-  editingWorkoutId: string | null;
-  onCancelDelete: () => void;
-  onCancelEdit: () => void;
-  onConfirmDelete: () => void;
-  onRequestDelete: () => void;
-  onSave: () => void;
   onStartEdit: () => void;
-  onUpdateDraftWorkout: (updater: (workout: Workout) => Workout) => void;
   workout: Workout;
 };
 
 function WorkoutCalendarItem({
-  deleteCandidateId,
-  draftWorkout,
-  editingWorkoutId,
-  onCancelDelete,
-  onCancelEdit,
-  onConfirmDelete,
-  onRequestDelete,
-  onSave,
   onStartEdit,
-  onUpdateDraftWorkout,
   workout,
 }: WorkoutCalendarItemProps) {
-  const isDeletePending = deleteCandidateId === workout.id;
-  const isEditing = editingWorkoutId === workout.id && draftWorkout !== null;
   const setCount = workout.exercises.reduce(
     (total, workoutExercise) => total + workoutExercise.sets.length,
     0,
@@ -354,41 +376,11 @@ function WorkoutCalendarItem({
         {workout.exercises.length} exercises · {setCount} sets
       </Text>
 
-      {isEditing && draftWorkout ? (
-        <WorkoutCalendarEditor
-          draftWorkout={draftWorkout}
-          onCancel={onCancelEdit}
-          onDelete={onRequestDelete}
-          onSave={onSave}
-          onUpdateDraftWorkout={onUpdateDraftWorkout}
-        />
-      ) : (
-        <View style={styles.actionRow}>
-          <Button onPress={onStartEdit} variant="secondary">
-            Modify
-          </Button>
-          <Button onPress={onRequestDelete} variant="danger">
-            Delete
-          </Button>
-        </View>
-      )}
-
-      {isDeletePending ? (
-        <View style={styles.confirmationBox}>
-          <Text style={styles.confirmationTitle}>Delete this workout?</Text>
-          <Text style={styles.mutedText}>
-            This removes the local workout now and will sync the delete when the backend is configured.
-          </Text>
-          <View style={styles.actionRow}>
-            <Button onPress={onConfirmDelete} variant="danger">
-              Confirm Delete
-            </Button>
-            <Button onPress={onCancelDelete} variant="secondary">
-              Keep Workout
-            </Button>
-          </View>
-        </View>
-      ) : null}
+      <View style={styles.actionRow}>
+        <Button onPress={onStartEdit} variant="secondary">
+          Modify
+        </Button>
+      </View>
     </View>
   );
 }
@@ -679,6 +671,57 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.caption,
     fontWeight: typography.weights.medium,
     lineHeight: typography.lineHeights.caption,
+  },
+  modalScreen: {
+    backgroundColor: colors.background,
+    flex: 1,
+  },
+  modalHeader: {
+    alignItems: "flex-start",
+    borderBottomColor: colors.border,
+    borderBottomWidth: 1,
+    flexDirection: "row",
+    gap: spacing.lg,
+    justifyContent: "space-between",
+    paddingBottom: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xxl,
+  },
+  modalTitleGroup: {
+    flex: 1,
+    gap: spacing.xs,
+  },
+  modalEyebrow: {
+    color: colors.textMuted,
+    fontSize: typography.sizes.caption,
+    fontWeight: typography.weights.medium,
+    lineHeight: typography.lineHeights.caption,
+    textTransform: "uppercase",
+  },
+  modalTitle: {
+    color: colors.text,
+    fontSize: typography.sizes.title,
+    fontWeight: typography.weights.bold,
+    lineHeight: typography.lineHeights.title,
+  },
+  modalContent: {
+    gap: spacing.lg,
+    padding: spacing.lg,
+    paddingBottom: spacing.xxl,
+  },
+  closeButton: {
+    backgroundColor: colors.surfaceMuted,
+    borderColor: colors.border,
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  closeButtonText: {
+    color: colors.text,
+    fontSize: typography.sizes.body,
+    fontWeight: typography.weights.semibold,
+    lineHeight: typography.lineHeights.body,
   },
   sessionList: {
     gap: spacing.md,

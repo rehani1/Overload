@@ -153,7 +153,9 @@ async function hydrateNutritionState() {
   const storedState = await loadStoredJson<NutritionState>(NUTRITION_STORAGE_KEY);
 
   emit({
-    entries: storedState?.entries ?? mockNutritionEntries,
+    entries: storedState?.entries
+      ? mergeSeedEntries(storedState.entries)
+      : mockNutritionEntries,
     isHydrated: true,
     target: storedState?.target ?? mockNutritionTarget,
   });
@@ -175,6 +177,15 @@ function sortEntries(entries: NutritionEntry[]) {
 
     return secondEntry.createdAt.localeCompare(firstEntry.createdAt);
   });
+}
+
+function mergeSeedEntries(entries: NutritionEntry[]) {
+  const existingEntryIds = new Set(entries.map((entry) => entry.id));
+  const missingSeedEntries = mockNutritionEntries.filter(
+    (entry) => !existingEntryIds.has(entry.id),
+  );
+
+  return sortEntries([...entries, ...missingSeedEntries]);
 }
 
 void hydrateNutritionState();
