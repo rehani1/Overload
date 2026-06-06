@@ -1,4 +1,4 @@
-import { StyleSheet, Text, TextInput, type KeyboardTypeOptions } from "react-native";
+import { StyleSheet, Text, TextInput, View, type KeyboardTypeOptions } from "react-native";
 
 import { colors } from "@/constants/colors";
 import { spacing } from "@/constants/spacing";
@@ -22,10 +22,11 @@ export function Input({
   keyboardType = "default",
 }: InputProps) {
   return (
-    <>
+    <View style={styles.field}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
       <TextInput
         autoCapitalize="none"
+        cursorColor={colors.primary}
         keyboardType={keyboardType}
         onChangeText={onChangeText}
         placeholder={placeholder}
@@ -34,28 +35,32 @@ export function Input({
         style={styles.input}
         value={value}
       />
-    </>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  field: {
+    gap: spacing.xs,
+  },
   label: {
-    color: colors.text,
+    color: colors.textMuted,
     fontSize: typography.sizes.caption,
-    fontWeight: typography.weights.medium,
+    fontWeight: typography.weights.semibold,
+    letterSpacing: 0.7,
     lineHeight: typography.lineHeights.caption,
-    marginBottom: spacing.xs,
+    textTransform: "uppercase",
   },
   input: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceElevated,
     borderColor: colors.border,
-    borderRadius: 8,
+    borderRadius: 18,
     borderWidth: 1,
     color: colors.text,
     fontSize: typography.sizes.body,
     lineHeight: typography.lineHeights.body,
-    minHeight: 48,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    minHeight: 54,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
   },
 });

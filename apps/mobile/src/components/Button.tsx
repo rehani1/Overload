@@ -4,6 +4,7 @@ import {
   StyleSheet,
   Text,
   type GestureResponderEvent,
+  type StyleProp,
   type ViewStyle,
 } from "react-native";
 
@@ -18,7 +19,7 @@ type ButtonProps = {
   onPress?: (event: GestureResponderEvent) => void;
   variant?: ButtonVariant;
   disabled?: boolean;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
 };
 
 const variantStyles = {
@@ -28,12 +29,12 @@ const variantStyles = {
       borderColor: colors.primary,
     },
     text: {
-      color: colors.background,
+      color: colors.surface,
     },
   },
   secondary: {
     button: {
-      backgroundColor: colors.surfaceMuted,
+      backgroundColor: colors.surfaceElevated,
       borderColor: colors.border,
     },
     text: {
@@ -46,7 +47,7 @@ const variantStyles = {
       borderColor: colors.danger,
     },
     text: {
-      color: colors.text,
+      color: colors.surface,
     },
   },
 } as const;
@@ -81,17 +82,19 @@ export function Button({
 const styles = StyleSheet.create({
   button: {
     alignItems: "center",
-    borderRadius: 8,
+    borderRadius: 999,
     borderWidth: 1,
     justifyContent: "center",
-    minHeight: 48,
-    paddingHorizontal: spacing.lg,
+    minHeight: 52,
+    paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
+    boxShadow: `0px 8px 18px ${colors.shadow}`,
   },
   text: {
-    fontSize: typography.sizes.body,
+    fontSize: typography.sizes.small,
     fontWeight: typography.weights.semibold,
-    lineHeight: typography.lineHeights.body,
+    letterSpacing: 0.2,
+    lineHeight: typography.lineHeights.small,
   },
   pressed: {
     opacity: 0.84,

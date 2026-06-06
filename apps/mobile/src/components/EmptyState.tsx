@@ -21,6 +21,10 @@ export function EmptyState({ title, message }: EmptyStateProps) {
 const styles = StyleSheet.create({
   container: {
     alignItems: "center",
+    backgroundColor: colors.surfaceMuted,
+    borderColor: colors.border,
+    borderRadius: 24,
+    borderWidth: 1,
     gap: spacing.sm,
     padding: spacing.xl,
   },
@@ -35,6 +39,7 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: typography.sizes.body,
     lineHeight: typography.lineHeights.body,
+    maxWidth: 280,
     textAlign: "center",
   },
 });

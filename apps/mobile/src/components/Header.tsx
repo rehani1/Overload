@@ -27,23 +27,26 @@ const styles = StyleSheet.create({
   header: {
     alignItems: "flex-start",
     flexDirection: "row",
-    gap: spacing.md,
+    gap: spacing.lg,
     justifyContent: "space-between",
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xl,
+    paddingTop: spacing.sm,
   },
   copy: {
     flex: 1,
-    gap: spacing.xs,
+    gap: spacing.sm,
   },
   title: {
     color: colors.text,
-    fontSize: typography.sizes.title,
+    fontSize: typography.sizes.display,
     fontWeight: typography.weights.bold,
-    lineHeight: typography.lineHeights.title,
+    letterSpacing: -0.5,
+    lineHeight: typography.lineHeights.display,
   },
   subtitle: {
     color: colors.textMuted,
     fontSize: typography.sizes.body,
     lineHeight: typography.lineHeights.body,
+    maxWidth: 420,
   },
 });

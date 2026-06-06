@@ -7,16 +7,21 @@ module.exports = {
       colors: {
         overload: {
           background: "#EEF8FB",
+          "background-warm": "#F7F1E6",
           border: "#D6E4EA",
+          "border-strong": "#BED2DB",
           coral: "#D9857B",
+          "coral-muted": "#F8DFD8",
           cream: "#FFF9EF",
           indigo: "#30245F",
           lavender: "#DCD5FF",
           muted: "#6B7584",
           navy: "#17213B",
+          nutrition: "#D76D6D",
           sky: "#DDF2F8",
           surface: "#FFFCF6",
           violet: "#7B6BC8",
+          workout: "#4EBC7B",
         },
       },
       borderRadius: {

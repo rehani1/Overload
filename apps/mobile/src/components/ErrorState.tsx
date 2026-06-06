@@ -20,12 +20,12 @@ export function ErrorState({ title = "Something went wrong", message }: ErrorSta
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.dangerMuted,
     borderColor: colors.danger,
-    borderRadius: 8,
+    borderRadius: 24,
     borderWidth: 1,
     gap: spacing.sm,
-    padding: spacing.lg,
+    padding: spacing.xl,
   },
   title: {
     color: colors.text,

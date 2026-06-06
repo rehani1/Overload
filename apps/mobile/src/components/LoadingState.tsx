@@ -20,6 +20,10 @@ export function LoadingState({ message = "Loading..." }: LoadingStateProps) {
 const styles = StyleSheet.create({
   container: {
     alignItems: "center",
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: 24,
+    borderWidth: 1,
     gap: spacing.md,
     padding: spacing.xl,
   },
