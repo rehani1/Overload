@@ -44,15 +44,26 @@ export default function WorkoutDetailScreen() {
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Header title={workout.title} subtitle={formatWorkoutDate(workout.date)} />
+        <View style={styles.hero}>
+          <Text style={styles.heroEyebrow}>Workout archive</Text>
+          <Text style={styles.heroTitle}>{workout.title}</Text>
+          <Text style={styles.heroSubtitle}>{formatWorkoutDate(workout.date)}</Text>
+        </View>
 
         <Button onPress={handleDuplicateWorkout}>Duplicate Workout</Button>
 
         {workout.exercises.map((workoutExercise) => (
-          <Card key={workoutExercise.id} title={workoutExercise.exercise.name}>
-            <Text style={styles.metaText}>
-              {workoutExercise.exercise.muscleGroup} · {workoutExercise.exercise.equipment}
-            </Text>
+          <Card key={workoutExercise.id}>
+            <View style={styles.exerciseHeader}>
+              <View style={styles.exerciseTitleGroup}>
+                <Text style={styles.exerciseEyebrow}>{workoutExercise.exercise.muscleGroup}</Text>
+                <Text style={styles.exerciseTitle}>{workoutExercise.exercise.name}</Text>
+                <Text style={styles.metaText}>{workoutExercise.exercise.equipment}</Text>
+              </View>
+              <View style={styles.setCountPill}>
+                <Text style={styles.setCountText}>{workoutExercise.sets.length} sets</Text>
+              </View>
+            </View>
 
             {workoutExercise.sets.length === 0 ? (
               <EmptyState title="No sets" message="This exercise has no logged sets." />
@@ -85,22 +96,88 @@ function formatWorkoutDate(date: string) {
 
 const styles = StyleSheet.create({
   content: {
-    gap: spacing.lg,
+    gap: spacing.xl,
     paddingBottom: spacing.xxl,
+  },
+  hero: {
+    backgroundColor: colors.primary,
+    borderColor: "rgba(255, 252, 246, 0.18)",
+    borderRadius: 34,
+    borderWidth: 1,
+    gap: spacing.sm,
+    padding: spacing.xl,
+  },
+  heroEyebrow: {
+    color: colors.primaryMuted,
+    fontSize: typography.sizes.caption,
+    fontWeight: typography.weights.semibold,
+    letterSpacing: 1,
+    lineHeight: typography.lineHeights.caption,
+    textTransform: "uppercase",
+  },
+  heroTitle: {
+    color: colors.surface,
+    fontSize: typography.sizes.display,
+    fontWeight: typography.weights.bold,
+    letterSpacing: -0.7,
+    lineHeight: typography.lineHeights.display,
+  },
+  heroSubtitle: {
+    color: "#D8D1F5",
+    fontSize: typography.sizes.body,
+    lineHeight: typography.lineHeights.body,
+  },
+  exerciseHeader: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: spacing.md,
+    justifyContent: "space-between",
+  },
+  exerciseTitleGroup: {
+    flex: 1,
+    gap: spacing.xs,
+  },
+  exerciseEyebrow: {
+    color: colors.textMuted,
+    fontSize: typography.sizes.caption,
+    fontWeight: typography.weights.semibold,
+    letterSpacing: 0.7,
+    lineHeight: typography.lineHeights.caption,
+    textTransform: "uppercase",
+  },
+  exerciseTitle: {
+    color: colors.text,
+    fontSize: typography.sizes.title,
+    fontWeight: typography.weights.bold,
+    lineHeight: typography.lineHeights.title,
   },
   metaText: {
     color: colors.textMuted,
     fontSize: typography.sizes.body,
     lineHeight: typography.lineHeights.body,
   },
+  setCountPill: {
+    backgroundColor: colors.accentMuted,
+    borderColor: colors.primaryMuted,
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  setCountText: {
+    color: colors.primary,
+    fontSize: typography.sizes.caption,
+    fontWeight: typography.weights.semibold,
+    lineHeight: typography.lineHeights.caption,
+  },
   setList: {
     gap: spacing.sm,
   },
   setRow: {
     alignItems: "center",
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: colors.surfaceElevated,
     borderColor: colors.border,
-    borderRadius: 8,
+    borderRadius: 18,
     borderWidth: 1,
     flexDirection: "row",
     flexWrap: "wrap",

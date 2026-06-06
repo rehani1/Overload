@@ -3,11 +3,10 @@ import { router } from "expo-router";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { Button } from "@/components/Button";
+import { Card } from "@/components/Card";
 import { EmptyState } from "@/components/EmptyState";
-import { Header } from "@/components/Header";
 import { Input } from "@/components/Input";
 import { Screen } from "@/components/Screen";
-import { Card } from "@/components/Card";
 import { colors } from "@/constants/colors";
 import { spacing } from "@/constants/spacing";
 import { typography } from "@/constants/typography";
@@ -59,23 +58,31 @@ export default function ActiveWorkoutScreen() {
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Header title="Active Workout" subtitle="Log sets quickly and keep the session moving." />
-
-        <Input
-          label="Workout title"
-          onChangeText={setWorkoutTitle}
-          placeholder="Workout title"
-          value={activeWorkout.title}
-        />
-
-        <View style={styles.actionRow}>
-          <Button onPress={() => setIsPickerVisible((current) => !current)} variant="secondary">
-            {isPickerVisible ? "Hide Exercises" : "Add Exercise"}
-          </Button>
-          <Button disabled={activeWorkout.exercises.length === 0} onPress={handleFinishWorkout}>
-            Finish Workout
-          </Button>
+        <View style={styles.hero}>
+          <Text style={styles.heroEyebrow}>Live session</Text>
+          <Text style={styles.heroTitle}>Log the work. Keep the screen quiet.</Text>
+          <Text style={styles.heroSubtitle}>
+            This flow is intentionally simple: add exercises, capture sets, finish, and move on.
+          </Text>
         </View>
+
+        <Card title="Session setup">
+          <Input
+            label="Workout title"
+            onChangeText={setWorkoutTitle}
+            placeholder="Workout title"
+            value={activeWorkout.title}
+          />
+
+          <View style={styles.actionRow}>
+            <Button onPress={() => setIsPickerVisible((current) => !current)} variant="secondary">
+              {isPickerVisible ? "Hide Exercises" : "Add Exercise"}
+            </Button>
+            <Button disabled={activeWorkout.exercises.length === 0} onPress={handleFinishWorkout}>
+              Finish Workout
+            </Button>
+          </View>
+        </Card>
 
         {isPickerVisible ? (
           <ExercisePicker
@@ -91,45 +98,54 @@ export default function ActiveWorkoutScreen() {
             <EmptyState title="No exercises yet" message="Add an exercise to start logging sets." />
           </Card>
         ) : (
-          activeWorkout.exercises.map((workoutExercise) => (
-            <Card key={workoutExercise.id} title={workoutExercise.exercise.name}>
-              <Text style={styles.metaText}>
-                {workoutExercise.exercise.muscleGroup} · {workoutExercise.exercise.equipment}
-              </Text>
-
-              {workoutExercise.sets.length === 0 ? (
-                <EmptyState title="No sets yet" message="Add a set when you are ready." />
-              ) : (
-                <View style={styles.setList}>
-                  {workoutExercise.sets.map((set) => (
-                    <WorkoutSetRow
-                      key={set.id}
-                      onRemove={() => removeSet(workoutExercise.id, set.id)}
-                      onUpdate={(updates) => updateSet(workoutExercise.id, set.id, updates)}
-                      set={set}
-                    />
-                  ))}
+          <View style={styles.exerciseStack}>
+            {activeWorkout.exercises.map((workoutExercise) => (
+              <Card key={workoutExercise.id}>
+                <View style={styles.exerciseHeader}>
+                  <View style={styles.exerciseTitleGroup}>
+                    <Text style={styles.exerciseEyebrow}>{workoutExercise.exercise.muscleGroup}</Text>
+                    <Text style={styles.exerciseTitle}>{workoutExercise.exercise.name}</Text>
+                    <Text style={styles.metaText}>{workoutExercise.exercise.equipment}</Text>
+                  </View>
+                  <View style={styles.setCountPill}>
+                    <Text style={styles.setCountText}>{workoutExercise.sets.length} sets</Text>
+                  </View>
                 </View>
-              )}
 
-              <View style={styles.actionRow}>
-                <Button
-                  onPress={() =>
-                    addSet(workoutExercise.id, {
-                      reps: 8,
-                      weight: 0,
-                    })
-                  }
-                  variant="secondary"
-                >
-                  Add Set
-                </Button>
-                <Button onPress={() => removeExercise(workoutExercise.id)} variant="danger">
-                  Remove
-                </Button>
-              </View>
-            </Card>
-          ))
+                {workoutExercise.sets.length === 0 ? (
+                  <EmptyState title="No sets yet" message="Add a set when you are ready." />
+                ) : (
+                  <View style={styles.setList}>
+                    {workoutExercise.sets.map((set) => (
+                      <WorkoutSetRow
+                        key={set.id}
+                        onRemove={() => removeSet(workoutExercise.id, set.id)}
+                        onUpdate={(updates) => updateSet(workoutExercise.id, set.id, updates)}
+                        set={set}
+                      />
+                    ))}
+                  </View>
+                )}
+
+                <View style={styles.actionRow}>
+                  <Button
+                    onPress={() =>
+                      addSet(workoutExercise.id, {
+                        reps: 8,
+                        weight: 0,
+                      })
+                    }
+                    variant="secondary"
+                  >
+                    Add Set
+                  </Button>
+                  <Button onPress={() => removeExercise(workoutExercise.id)} variant="danger">
+                    Remove
+                  </Button>
+                </View>
+              </Card>
+            ))}
+          </View>
         )}
       </ScrollView>
     </Screen>
@@ -189,29 +205,98 @@ function parseOptionalNumber(value: string) {
 
 const styles = StyleSheet.create({
   content: {
-    gap: spacing.lg,
+    gap: spacing.xl,
     paddingBottom: spacing.xxl,
+  },
+  hero: {
+    backgroundColor: colors.primary,
+    borderColor: "rgba(255, 252, 246, 0.18)",
+    borderRadius: 34,
+    borderWidth: 1,
+    gap: spacing.md,
+    padding: spacing.xl,
+  },
+  heroEyebrow: {
+    color: colors.primaryMuted,
+    fontSize: typography.sizes.caption,
+    fontWeight: typography.weights.semibold,
+    letterSpacing: 1,
+    lineHeight: typography.lineHeights.caption,
+    textTransform: "uppercase",
+  },
+  heroTitle: {
+    color: colors.surface,
+    fontSize: typography.sizes.display,
+    fontWeight: typography.weights.bold,
+    letterSpacing: -0.7,
+    lineHeight: typography.lineHeights.display,
+  },
+  heroSubtitle: {
+    color: "#D8D1F5",
+    fontSize: typography.sizes.body,
+    lineHeight: typography.lineHeights.body,
   },
   actionRow: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: spacing.md,
   },
+  exerciseStack: {
+    gap: spacing.xl,
+  },
+  exerciseHeader: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: spacing.md,
+    justifyContent: "space-between",
+  },
+  exerciseTitleGroup: {
+    flex: 1,
+    gap: spacing.xs,
+  },
+  exerciseEyebrow: {
+    color: colors.textMuted,
+    fontSize: typography.sizes.caption,
+    fontWeight: typography.weights.semibold,
+    letterSpacing: 0.7,
+    lineHeight: typography.lineHeights.caption,
+    textTransform: "uppercase",
+  },
+  exerciseTitle: {
+    color: colors.text,
+    fontSize: typography.sizes.title,
+    fontWeight: typography.weights.bold,
+    lineHeight: typography.lineHeights.title,
+  },
   metaText: {
     color: colors.textMuted,
     fontSize: typography.sizes.body,
     lineHeight: typography.lineHeights.body,
   },
+  setCountPill: {
+    backgroundColor: colors.accentMuted,
+    borderColor: colors.primaryMuted,
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  setCountText: {
+    color: colors.primary,
+    fontSize: typography.sizes.caption,
+    fontWeight: typography.weights.semibold,
+    lineHeight: typography.lineHeights.caption,
+  },
   setList: {
     gap: spacing.md,
   },
   setRow: {
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: colors.surfaceElevated,
     borderColor: colors.border,
-    borderRadius: 8,
+    borderRadius: 24,
     borderWidth: 1,
     gap: spacing.md,
-    padding: spacing.md,
+    padding: spacing.lg,
   },
   setNumber: {
     color: colors.text,

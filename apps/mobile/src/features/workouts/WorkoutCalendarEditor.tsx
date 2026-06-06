@@ -352,25 +352,24 @@ function renumberSets(sets: WorkoutSet[]) {
 
 const styles = StyleSheet.create({
   editor: {
-    gap: spacing.md,
-    marginTop: spacing.md,
+    gap: spacing.lg,
   },
   exerciseList: {
-    gap: spacing.md,
+    gap: spacing.lg,
   },
   exerciseEditor: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceElevated,
     borderColor: colors.border,
-    borderRadius: 8,
+    borderRadius: 24,
     borderWidth: 1,
-    gap: spacing.sm,
-    padding: spacing.md,
+    gap: spacing.md,
+    padding: spacing.lg,
   },
   exerciseTitle: {
     color: colors.text,
-    fontSize: typography.sizes.body,
+    fontSize: typography.sizes.subtitle,
     fontWeight: typography.weights.semibold,
-    lineHeight: typography.lineHeights.body,
+    lineHeight: typography.lineHeights.subtitle,
   },
   mutedText: {
     color: colors.textMuted,
@@ -378,15 +377,15 @@ const styles = StyleSheet.create({
     lineHeight: typography.lineHeights.body,
   },
   setList: {
-    gap: spacing.sm,
+    gap: spacing.md,
   },
   setEditor: {
     backgroundColor: colors.surfaceMuted,
     borderColor: colors.border,
-    borderRadius: 8,
+    borderRadius: 20,
     borderWidth: 1,
-    gap: spacing.sm,
-    padding: spacing.md,
+    gap: spacing.md,
+    padding: spacing.lg,
   },
   setTitle: {
     color: colors.text,

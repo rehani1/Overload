@@ -441,6 +441,8 @@ type NutritionMetricProps = {
 };
 
 function NutritionMetric({ label, target, unit, value }: NutritionMetricProps) {
+  const progress = target > 0 ? Math.min(value / target, 1) : 0;
+
   return (
     <View style={styles.metricCard}>
       <Text style={styles.label}>{label}</Text>
@@ -452,6 +454,9 @@ function NutritionMetric({ label, target, unit, value }: NutritionMetricProps) {
         of {formatNumber(target)}
         {unit}
       </Text>
+      <View style={styles.progressTrack}>
+        <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
+      </View>
     </View>
   );
 }
@@ -719,12 +724,19 @@ function NutritionEntryItem({
 }: NutritionEntryItemProps) {
   return (
     <View style={styles.entryItem}>
-      <Text style={styles.entryTitle}>{entry.foodName}</Text>
-      <Text style={styles.mutedText}>
-        {formatMealType(entry.mealType)} · {formatNumber(entry.servingQuantity)} serving
-      </Text>
+      <View style={styles.entryHeader}>
+        <View style={styles.entryCopy}>
+          <Text style={styles.entryTitle}>{entry.foodName}</Text>
+          <Text style={styles.mutedText}>
+            {formatMealType(entry.mealType)} · {formatNumber(entry.servingQuantity)} serving
+          </Text>
+        </View>
+        <View style={styles.caloriePill}>
+          <Text style={styles.caloriePillText}>{entry.calories} cal</Text>
+        </View>
+      </View>
       <Text style={styles.bodyText}>
-        {entry.calories} cal · P {formatNumber(entry.proteinGrams)}g · C{" "}
+        P {formatNumber(entry.proteinGrams)}g · C{" "}
         {formatNumber(entry.carbsGrams)}g · F {formatNumber(entry.fatGrams)}g
       </Text>
       {entry.notes ? <Text style={styles.mutedText}>{entry.notes}</Text> : null}
@@ -929,10 +941,10 @@ function parsePositiveNumber(value: string) {
 
 const styles = StyleSheet.create({
   content: {
-    gap: spacing.lg,
+    gap: spacing.xl,
   },
   form: {
-    gap: spacing.md,
+    gap: spacing.lg,
   },
   actionRow: {
     flexDirection: "row",
@@ -954,14 +966,16 @@ const styles = StyleSheet.create({
   label: {
     color: colors.textMuted,
     fontSize: typography.sizes.caption,
-    fontWeight: typography.weights.medium,
+    fontWeight: typography.weights.semibold,
+    letterSpacing: 0.7,
     lineHeight: typography.lineHeights.caption,
     textTransform: "uppercase",
   },
   sectionLabel: {
     color: colors.textMuted,
     fontSize: typography.sizes.caption,
-    fontWeight: typography.weights.medium,
+    fontWeight: typography.weights.semibold,
+    letterSpacing: 0.7,
     lineHeight: typography.lineHeights.caption,
     marginTop: spacing.sm,
     textTransform: "uppercase",
@@ -972,7 +986,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   mealTypeChip: {
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: colors.surfaceElevated,
     borderColor: colors.border,
     borderRadius: 999,
     borderWidth: 1,
@@ -982,7 +996,7 @@ const styles = StyleSheet.create({
   mealTypeText: {
     color: colors.textMuted,
     fontSize: typography.sizes.caption,
-    fontWeight: typography.weights.medium,
+    fontWeight: typography.weights.semibold,
     lineHeight: typography.lineHeights.caption,
   },
   selectedMealTypeChip: {
@@ -990,7 +1004,7 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
   },
   selectedMealTypeText: {
-    color: colors.background,
+    color: colors.surface,
   },
   metricGrid: {
     flexDirection: "row",
@@ -998,20 +1012,31 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   metricCard: {
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: colors.surfaceElevated,
     borderColor: colors.border,
-    borderRadius: 8,
+    borderRadius: 24,
     borderWidth: 1,
     flexBasis: "47%",
     flexGrow: 1,
-    gap: spacing.xs,
-    padding: spacing.md,
+    gap: spacing.sm,
+    padding: spacing.lg,
   },
   metricValue: {
     color: colors.text,
     fontSize: typography.sizes.title,
     fontWeight: typography.weights.bold,
     lineHeight: typography.lineHeights.title,
+  },
+  progressTrack: {
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 999,
+    height: 8,
+    overflow: "hidden",
+  },
+  progressFill: {
+    backgroundColor: colors.nutrition,
+    borderRadius: 999,
+    height: 8,
   },
   modalScreen: {
     backgroundColor: colors.background,
@@ -1025,7 +1050,7 @@ const styles = StyleSheet.create({
     gap: spacing.lg,
     justifyContent: "space-between",
     paddingBottom: spacing.lg,
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.xl,
     paddingTop: spacing.xxl,
   },
   modalTitleGroup: {
@@ -1035,7 +1060,8 @@ const styles = StyleSheet.create({
   modalEyebrow: {
     color: colors.textMuted,
     fontSize: typography.sizes.caption,
-    fontWeight: typography.weights.medium,
+    fontWeight: typography.weights.semibold,
+    letterSpacing: 0.8,
     lineHeight: typography.lineHeights.caption,
     textTransform: "uppercase",
   },
@@ -1046,12 +1072,12 @@ const styles = StyleSheet.create({
     lineHeight: typography.lineHeights.title,
   },
   modalContent: {
-    gap: spacing.lg,
-    padding: spacing.lg,
+    gap: spacing.xl,
+    padding: spacing.xl,
     paddingBottom: spacing.xxl,
   },
   closeButton: {
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: colors.surfaceElevated,
     borderColor: colors.border,
     borderRadius: 999,
     borderWidth: 1,
@@ -1076,23 +1102,47 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   entryItem: {
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: colors.surfaceElevated,
     borderColor: colors.border,
-    borderRadius: 8,
+    borderRadius: 24,
     borderWidth: 1,
-    gap: spacing.sm,
-    padding: spacing.md,
+    gap: spacing.md,
+    padding: spacing.lg,
+  },
+  entryHeader: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: spacing.md,
+    justifyContent: "space-between",
+  },
+  entryCopy: {
+    flex: 1,
+    gap: spacing.xs,
   },
   entryTitle: {
     color: colors.text,
-    fontSize: typography.sizes.body,
+    fontSize: typography.sizes.subtitle,
     fontWeight: typography.weights.semibold,
-    lineHeight: typography.lineHeights.body,
+    lineHeight: typography.lineHeights.subtitle,
+  },
+  caloriePill: {
+    backgroundColor: colors.coralMuted,
+    borderColor: colors.coral,
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  caloriePillText: {
+    color: colors.text,
+    fontSize: typography.sizes.caption,
+    fontWeight: typography.weights.semibold,
+    lineHeight: typography.lineHeights.caption,
   },
   editBox: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceElevated,
     borderColor: colors.border,
-    borderRadius: 8,
+    borderRadius: 24,
     borderWidth: 1,
     gap: spacing.md,
     marginTop: spacing.sm,

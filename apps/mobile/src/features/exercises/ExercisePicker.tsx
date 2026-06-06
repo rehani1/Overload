@@ -31,7 +31,8 @@ export function ExercisePicker({ onSelect }: ExercisePickerProps) {
   });
 
   return (
-    <Card title="Add Exercise">
+    <Card title="Exercise library">
+      <Text style={styles.helperText}>Search and add movements to this mobile session.</Text>
       <ExerciseSearch value={query} onChangeText={setQuery} />
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -83,12 +84,12 @@ const styles = StyleSheet.create({
   filterRow: {
     flexDirection: "row",
     gap: spacing.sm,
-    paddingVertical: spacing.xs,
+    paddingVertical: spacing.sm,
   },
   filterPill: {
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: colors.surfaceElevated,
     borderColor: colors.border,
-    borderRadius: 8,
+    borderRadius: 999,
     borderWidth: 1,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
@@ -98,13 +99,18 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
   },
   filterText: {
-    color: colors.text,
+    color: colors.textMuted,
     fontSize: typography.sizes.caption,
-    fontWeight: typography.weights.medium,
+    fontWeight: typography.weights.semibold,
     lineHeight: typography.lineHeights.caption,
   },
   filterTextSelected: {
-    color: colors.background,
+    color: colors.surface,
+  },
+  helperText: {
+    color: colors.textMuted,
+    fontSize: typography.sizes.body,
+    lineHeight: typography.lineHeights.body,
   },
   pressed: {
     opacity: 0.84,
