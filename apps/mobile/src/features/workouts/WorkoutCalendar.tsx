@@ -3,6 +3,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-nati
 
 import { isApiConfigured } from "@/api/client";
 import {
+  createWorkout as createWorkoutRequest,
   deleteWorkout as deleteWorkoutRequest,
   updateWorkout as updateWorkoutRequest,
 } from "@/api/workoutApi";
@@ -167,7 +168,13 @@ type WorkoutDateDetailsProps = {
 };
 
 export function WorkoutDateDetails({ selectedDateKey }: WorkoutDateDetailsProps) {
-  const { deleteWorkout, restoreWorkout, updateWorkout, workouts } = useWorkoutHistoryStore();
+  const {
+    addCompletedWorkout,
+    deleteWorkout,
+    restoreWorkout,
+    updateWorkout,
+    workouts,
+  } = useWorkoutHistoryStore();
   const completedWorkouts = workouts.filter((workout) => workout.status === "completed");
   const [editingWorkout, setEditingWorkout] = useState<Workout | null>(null);
   const [isDeletePending, setIsDeletePending] = useState(false);
@@ -222,6 +229,58 @@ export function WorkoutDateDetails({ selectedDateKey }: WorkoutDateDetailsProps)
     setEditingWorkout(workout);
     setIsDeletePending(false);
     setDraftWorkout(cloneWorkout(workout));
+  }
+
+  function handleStartAdd() {
+    setEditingWorkout(null);
+    setIsDeletePending(false);
+    setDraftWorkout(createEmptyWorkout(selectedDateKey));
+  }
+
+  async function handleCreateWorkout() {
+    if (!draftWorkout) {
+      return;
+    }
+
+    const createdWorkout: Workout = {
+      ...draftWorkout,
+      title: draftWorkout.title.trim() || "Workout",
+    };
+
+    addCompletedWorkout(createdWorkout);
+    handleCancelEdit();
+    setSyncState({
+      kind: "pending",
+      message: "Workout saved locally. Syncing new workout...",
+    });
+
+    if (!isApiConfigured) {
+      setSyncState({
+        kind: "success",
+        message: "Workout saved locally. Backend sync is not configured yet.",
+      });
+      return;
+    }
+
+    try {
+      await createWorkoutRequest({
+        date: createdWorkout.date,
+        exercises: createdWorkout.exercises,
+        notes: createdWorkout.notes,
+        status: "completed",
+        title: createdWorkout.title,
+      });
+      setSyncState({
+        kind: "success",
+        message: "Workout created and synced.",
+      });
+    } catch {
+      deleteWorkout(createdWorkout.id);
+      setSyncState({
+        kind: "error",
+        message: "Create sync failed. Local workout was rolled back.",
+      });
+    }
   }
 
   async function handleSaveWorkout(originalWorkout: Workout) {
@@ -296,6 +355,9 @@ export function WorkoutDateDetails({ selectedDateKey }: WorkoutDateDetailsProps)
             {syncState.message}
           </Text>
         ) : null}
+        <View style={styles.actionRow}>
+          <Button onPress={handleStartAdd}>Add Workout</Button>
+        </View>
         {selectedWorkouts.length === 0 ? (
           <Text style={styles.mutedText}>No completed session on this date.</Text>
         ) : (
@@ -315,14 +377,14 @@ export function WorkoutDateDetails({ selectedDateKey }: WorkoutDateDetailsProps)
         animationType="slide"
         onRequestClose={handleCancelEdit}
         presentationStyle="pageSheet"
-        visible={editingWorkout !== null}
+        visible={draftWorkout !== null}
       >
         <View style={styles.modalScreen}>
           <View style={styles.modalHeader}>
             <View style={styles.modalTitleGroup}>
               <Text style={styles.modalEyebrow}>Workout</Text>
               <Text style={styles.modalTitle}>
-                {editingWorkout ? `Edit ${editingWorkout.title}` : "Edit Workout"}
+                {editingWorkout ? `Edit ${editingWorkout.title}` : "Add Workout"}
               </Text>
             </View>
             <Pressable
@@ -340,16 +402,19 @@ export function WorkoutDateDetails({ selectedDateKey }: WorkoutDateDetailsProps)
                 <WorkoutCalendarEditor
                   draftWorkout={draftWorkout}
                   onCancel={handleCancelEdit}
-                  onDelete={() => setIsDeletePending(true)}
-                  onSave={() => handleSaveWorkout(editingWorkout)}
+                  onDelete={editingWorkout ? () => setIsDeletePending(true) : undefined}
+                  onSave={() =>
+                    editingWorkout ? handleSaveWorkout(editingWorkout) : handleCreateWorkout()
+                  }
                   onUpdateDraftWorkout={(updater) =>
                     setDraftWorkout((currentDraft) =>
                       currentDraft ? updater(currentDraft) : currentDraft,
                     )
                   }
+                  saveLabel={editingWorkout ? "Save Changes" : "Create Workout"}
                 />
 
-                {isDeletePending ? (
+                {editingWorkout && isDeletePending ? (
                   <View style={styles.confirmationBox}>
                     <Text style={styles.confirmationTitle}>Delete this workout?</Text>
                     <Text style={styles.mutedText}>
@@ -460,6 +525,20 @@ function cloneWorkout(workout: Workout): Workout {
   };
 }
 
+function createEmptyWorkout(dateKey: string): Workout {
+  return {
+    date: buildDateTime(dateKey, 12, 0),
+    exercises: [],
+    id: createId("workout"),
+    status: "completed",
+    title: "Workout",
+  };
+}
+
+function createId(prefix: string) {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 function groupWorkoutsByDate(workouts: Workout[]) {
   const groupedWorkouts = new Map<string, Workout[]>();
 
@@ -485,6 +564,12 @@ function groupNutritionEntriesByDate(entries: NutritionEntry[]) {
 
 function getDateKey(date: string) {
   return getDateKeyFromDate(new Date(date));
+}
+
+function buildDateTime(dateKey: string, hours: number, minutes: number) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+
+  return new Date(year, month - 1, day, hours, minutes).toISOString();
 }
 
 function getDateKeyFromDate(date: Date) {

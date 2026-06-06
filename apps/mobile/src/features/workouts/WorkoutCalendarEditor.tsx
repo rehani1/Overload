@@ -14,9 +14,10 @@ import type { Workout, WorkoutExercise, WorkoutSet } from "@/types/workout";
 type WorkoutCalendarEditorProps = {
   draftWorkout: Workout;
   onCancel: () => void;
-  onDelete: () => void;
+  onDelete?: () => void;
   onSave: () => void;
   onUpdateDraftWorkout: (updater: (workout: Workout) => Workout) => void;
+  saveLabel?: string;
 };
 
 export function WorkoutCalendarEditor({
@@ -25,6 +26,7 @@ export function WorkoutCalendarEditor({
   onDelete,
   onSave,
   onUpdateDraftWorkout,
+  saveLabel = "Save Changes",
 }: WorkoutCalendarEditorProps) {
   const [isPickerVisible, setIsPickerVisible] = useState(false);
 
@@ -191,13 +193,15 @@ export function WorkoutCalendarEditor({
       )}
 
       <View style={styles.actionRow}>
-        <Button onPress={onSave}>Save Changes</Button>
+        <Button onPress={onSave}>{saveLabel}</Button>
         <Button onPress={onCancel} variant="secondary">
           Cancel
         </Button>
-        <Button onPress={onDelete} variant="danger">
-          Delete Workout
-        </Button>
+        {onDelete ? (
+          <Button onPress={onDelete} variant="danger">
+            Delete Workout
+          </Button>
+        ) : null}
       </View>
     </View>
   );
