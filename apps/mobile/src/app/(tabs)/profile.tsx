@@ -24,11 +24,28 @@ export default function ProfileScreen() {
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Header title="Profile" subtitle="Manage basic account preferences for training." />
+        <Header title="Profile" subtitle="Account basics for the mobile logging companion." />
 
-        <Card title={fullName}>
-          <Text style={styles.mutedText}>{profileUser.email}</Text>
-          <Text style={styles.bodyText}>{profileUser.goal}</Text>
+        <View style={styles.profileHero}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>
+              {profileUser.firstName.charAt(0)}
+              {profileUser.lastName.charAt(0)}
+            </Text>
+          </View>
+          <View style={styles.heroCopy}>
+            <Text style={styles.heroEyebrow}>Local training profile</Text>
+            <Text style={styles.heroTitle}>{fullName}</Text>
+            <Text style={styles.heroSubtitle}>{profileUser.email}</Text>
+          </View>
+          <View style={styles.statusPill}>
+            <Text style={styles.statusPillText}>Mobile</Text>
+          </View>
+        </View>
+
+        <Card>
+          <Text style={styles.label}>Current goal</Text>
+          <Text style={styles.goalText}>{profileUser.goal}</Text>
         </Card>
 
         <View style={styles.grid}>
@@ -44,12 +61,15 @@ export default function ProfileScreen() {
 
         <Card title="Settings">
           <SettingsRow label="Training goal" value={profileUser.goal} />
-          <SettingsRow label="Notifications" value="Not configured" />
-          <SettingsRow label="Data sync" value="Backend not connected" />
+          <SettingsRow label="Notifications" value="Quiet for now" />
+          <SettingsRow label="Data sync" value="Local until backend connects" />
         </Card>
 
         <Card title="Account Actions">
-          <Text style={styles.mutedText}>Real authentication will be added after backend integration.</Text>
+          <Text style={styles.mutedText}>
+            This keeps the demo profile local. Real authentication can plug in later without changing
+            the mobile logging flow.
+          </Text>
           <Button onPress={handleLogout} variant="secondary">
             Log Out
           </Button>
@@ -75,8 +95,69 @@ function SettingsRow({ label, value }: SettingsRowProps) {
 
 const styles = StyleSheet.create({
   content: {
-    gap: spacing.lg,
+    gap: spacing.xl,
     paddingBottom: spacing.xxl,
+  },
+  profileHero: {
+    alignItems: "center",
+    backgroundColor: colors.primary,
+    borderColor: "rgba(255, 252, 246, 0.18)",
+    borderRadius: 32,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: spacing.lg,
+    padding: spacing.xl,
+  },
+  avatar: {
+    alignItems: "center",
+    backgroundColor: colors.primaryMuted,
+    borderRadius: 24,
+    height: 64,
+    justifyContent: "center",
+    width: 64,
+  },
+  avatarText: {
+    color: colors.primary,
+    fontSize: typography.sizes.title,
+    fontWeight: typography.weights.bold,
+    lineHeight: typography.lineHeights.title,
+  },
+  heroCopy: {
+    flex: 1,
+    gap: spacing.xs,
+  },
+  heroEyebrow: {
+    color: colors.primaryMuted,
+    fontSize: typography.sizes.caption,
+    fontWeight: typography.weights.semibold,
+    letterSpacing: 0.8,
+    lineHeight: typography.lineHeights.caption,
+    textTransform: "uppercase",
+  },
+  heroTitle: {
+    color: colors.surface,
+    fontSize: typography.sizes.title,
+    fontWeight: typography.weights.bold,
+    lineHeight: typography.lineHeights.title,
+  },
+  heroSubtitle: {
+    color: "#D8D1F5",
+    fontSize: typography.sizes.small,
+    lineHeight: typography.lineHeights.small,
+  },
+  statusPill: {
+    backgroundColor: "rgba(255, 252, 246, 0.12)",
+    borderColor: "rgba(255, 252, 246, 0.2)",
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  statusPillText: {
+    color: colors.surface,
+    fontSize: typography.sizes.caption,
+    fontWeight: typography.weights.semibold,
+    lineHeight: typography.lineHeights.caption,
   },
   grid: {
     flexDirection: "row",
@@ -88,7 +169,8 @@ const styles = StyleSheet.create({
   label: {
     color: colors.textMuted,
     fontSize: typography.sizes.caption,
-    fontWeight: typography.weights.medium,
+    fontWeight: typography.weights.semibold,
+    letterSpacing: 0.7,
     lineHeight: typography.lineHeights.caption,
     textTransform: "uppercase",
   },
@@ -97,6 +179,12 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.title,
     fontWeight: typography.weights.bold,
     lineHeight: typography.lineHeights.title,
+  },
+  goalText: {
+    color: colors.text,
+    fontSize: typography.sizes.subtitle,
+    fontWeight: typography.weights.semibold,
+    lineHeight: typography.lineHeights.subtitle,
   },
   bodyText: {
     color: colors.text,
@@ -111,7 +199,7 @@ const styles = StyleSheet.create({
   settingsRow: {
     borderBottomColor: colors.border,
     borderBottomWidth: 1,
-    gap: spacing.xs,
-    paddingVertical: spacing.sm,
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
   },
 });

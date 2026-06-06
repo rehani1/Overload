@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { router } from "expo-router";
-import { Pressable, ScrollView, StyleSheet, Text } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
+import { AuthHero } from "@/components/AuthHero";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
-import { Header } from "@/components/Header";
 import { Input } from "@/components/Input";
 import { Screen } from "@/components/Screen";
 import { colors } from "@/constants/colors";
@@ -32,9 +32,20 @@ export default function RegisterScreen() {
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Header title="Create Account" subtitle="Set up a local profile for the demo app." />
+        <View style={styles.brandLockup}>
+          <Text style={styles.brandMark}>Overload</Text>
+          <Text style={styles.brandMeta}>Mobile companion</Text>
+        </View>
 
-        <Card title="New lifter profile">
+        <AuthHero
+          details={["Workout capture", "Nutrition notes", "Future sync"]}
+          eyebrow="Build the training record"
+          subtitle="Create a lightweight local profile now. Backend-backed accounts can replace this flow without changing the mobile logging model."
+          title="Set up a cleaner way to track."
+        />
+
+        <Card title="New profile">
+          <Text style={styles.formIntro}>Keep this simple. The web app will handle deeper planning and analysis later.</Text>
           <Input label="First name" onChangeText={setFirstName} placeholder="First name" value={firstName} />
           <Input label="Last name" onChangeText={setLastName} placeholder="Last name" value={lastName} />
           <Input
@@ -54,9 +65,12 @@ export default function RegisterScreen() {
           <Button onPress={handleRegister}>Create Account</Button>
         </Card>
 
-        <Pressable accessibilityRole="button" onPress={() => router.push("../login")}>
-          <Text style={styles.linkText}>Back to login</Text>
-        </Pressable>
+        <View style={styles.footerCard}>
+          <Text style={styles.footerText}>Already have a profile?</Text>
+          <Pressable accessibilityRole="button" onPress={() => router.push("../login")}>
+            <Text style={styles.linkText}>Back to login</Text>
+          </Pressable>
+        </View>
       </ScrollView>
     </Screen>
   );
@@ -64,8 +78,51 @@ export default function RegisterScreen() {
 
 const styles = StyleSheet.create({
   content: {
-    gap: spacing.lg,
+    flexGrow: 1,
+    gap: spacing.xl,
+    justifyContent: "center",
     paddingBottom: spacing.xxl,
+    paddingTop: spacing.xl,
+  },
+  brandLockup: {
+    gap: spacing.xs,
+  },
+  brandMark: {
+    color: colors.text,
+    fontSize: typography.sizes.title,
+    fontWeight: typography.weights.bold,
+    letterSpacing: -0.4,
+    lineHeight: typography.lineHeights.title,
+  },
+  brandMeta: {
+    color: colors.textMuted,
+    fontSize: typography.sizes.caption,
+    fontWeight: typography.weights.semibold,
+    letterSpacing: 0.8,
+    lineHeight: typography.lineHeights.caption,
+    textTransform: "uppercase",
+  },
+  formIntro: {
+    color: colors.textMuted,
+    fontSize: typography.sizes.body,
+    lineHeight: typography.lineHeights.body,
+  },
+  footerCard: {
+    alignItems: "center",
+    backgroundColor: colors.surfaceMuted,
+    borderColor: colors.border,
+    borderRadius: 24,
+    borderWidth: 1,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+    justifyContent: "center",
+    padding: spacing.lg,
+  },
+  footerText: {
+    color: colors.textMuted,
+    fontSize: typography.sizes.body,
+    lineHeight: typography.lineHeights.body,
   },
   linkText: {
     color: colors.primary,
