@@ -6,17 +6,20 @@ import { Card } from "@/components/Card";
 import { EmptyState } from "@/components/EmptyState";
 import { Header } from "@/components/Header";
 import { Screen } from "@/components/Screen";
-import { colors } from "@/constants/colors";
+import type { AppColors } from "@/constants/colors";
 import { spacing } from "@/constants/spacing";
 import { typography } from "@/constants/typography";
 import { useActiveWorkoutStore } from "@/store/useActiveWorkoutStore";
 import { useWorkoutHistoryStore } from "@/store/useWorkoutHistoryStore";
+import { useThemeColors } from "@/theme/ThemeProvider";
 
 export default function WorkoutDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const workoutId = String(id);
   const { duplicateWorkout, getWorkoutById } = useWorkoutHistoryStore();
   const { startWorkout } = useActiveWorkoutStore();
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const workout = getWorkoutById(workoutId);
 
   function handleDuplicateWorkout() {
@@ -94,7 +97,8 @@ function formatWorkoutDate(date: string) {
   }).format(new Date(date));
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: AppColors) {
+  return StyleSheet.create({
   content: {
     gap: spacing.xl,
     paddingBottom: spacing.xxl,
@@ -116,14 +120,14 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   heroTitle: {
-    color: colors.surface,
+    color: colors.onPrimary,
     fontSize: typography.sizes.display,
     fontWeight: typography.weights.bold,
     letterSpacing: -0.7,
     lineHeight: typography.lineHeights.display,
   },
   heroSubtitle: {
-    color: "#D8D1F5",
+    color: colors.heroTextMuted,
     fontSize: typography.sizes.body,
     lineHeight: typography.lineHeights.body,
   },
@@ -189,4 +193,5 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.body,
     lineHeight: typography.lineHeights.body,
   },
-});
+  });
+}

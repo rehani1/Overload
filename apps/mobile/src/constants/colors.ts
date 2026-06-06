@@ -1,4 +1,4 @@
-export const colors = {
+export const lightColors = {
   background: "#EEF8FB",
   backgroundWarm: "#F7F1E6",
   surface: "#FFFCF6",
@@ -21,6 +21,40 @@ export const colors = {
   nutrition: "#D76D6D",
   workout: "#4EBC7B",
   shadow: "rgba(48, 36, 95, 0.12)",
+  onPrimary: "#FFFCF6",
+  onDanger: "#FFFCF6",
+  heroTextMuted: "#D8D1F5",
 } as const;
 
-export type ColorName = keyof typeof colors;
+export type ColorName = keyof typeof lightColors;
+export type AppColors = Record<ColorName, string>;
+
+export const darkColors: AppColors = {
+  background: "#101725",
+  backgroundWarm: "#1A1722",
+  surface: "#172033",
+  surfaceMuted: "#202B3F",
+  surfaceElevated: "#243149",
+  text: "#F7F2E8",
+  textMuted: "#B8C0CF",
+  border: "#334158",
+  borderStrong: "#506077",
+  primary: "#403173",
+  primaryMuted: "#CFC8FF",
+  accent: "#A99BFF",
+  accentMuted: "#2A2443",
+  coral: "#E49A91",
+  coralMuted: "#432B2D",
+  danger: "#C85C5C",
+  dangerMuted: "#43252A",
+  success: "#67D297",
+  successMuted: "#243C35",
+  nutrition: "#EF8D8D",
+  workout: "#67D297",
+  shadow: "rgba(0, 0, 0, 0.34)",
+  onPrimary: "#FFFCF6",
+  onDanger: "#FFFCF6",
+  heroTextMuted: "#D8D1F5",
+};
+
+export const colors: AppColors = lightColors;

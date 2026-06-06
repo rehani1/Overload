@@ -4,10 +4,11 @@ import { StyleSheet, Text, View } from "react-native";
 import { Button } from "@/components/Button";
 import { EmptyState } from "@/components/EmptyState";
 import { Input } from "@/components/Input";
-import { colors } from "@/constants/colors";
+import type { AppColors } from "@/constants/colors";
 import { spacing } from "@/constants/spacing";
 import { typography } from "@/constants/typography";
 import { ExercisePicker } from "@/features/exercises/ExercisePicker";
+import { useThemeColors } from "@/theme/ThemeProvider";
 import type { Exercise } from "@/types/exercise";
 import type { Workout, WorkoutExercise, WorkoutSet } from "@/types/workout";
 
@@ -28,6 +29,8 @@ export function WorkoutCalendarEditor({
   onUpdateDraftWorkout,
   saveLabel = "Save Changes",
 }: WorkoutCalendarEditorProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const [isPickerVisible, setIsPickerVisible] = useState(false);
 
   function updateWorkout(updates: Partial<Workout>) {
@@ -222,6 +225,9 @@ function WorkoutExerciseEditor({
   onUpdateSet,
   workoutExercise,
 }: WorkoutExerciseEditorProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
+
   return (
     <View style={styles.exerciseEditor}>
       <Text style={styles.exerciseTitle}>{workoutExercise.exercise.name}</Text>
@@ -263,6 +269,9 @@ type SetEditorProps = {
 };
 
 function SetEditor({ onRemove, onUpdate, set }: SetEditorProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
+
   return (
     <View style={styles.setEditor}>
       <Text style={styles.setTitle}>Set {set.setNumber}</Text>
@@ -350,7 +359,8 @@ function renumberSets(sets: WorkoutSet[]) {
   }));
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: AppColors) {
+  return StyleSheet.create({
   editor: {
     gap: spacing.lg,
   },
@@ -398,4 +408,5 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: spacing.md,
   },
-});
+  });
+}

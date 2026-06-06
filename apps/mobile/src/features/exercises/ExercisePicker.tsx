@@ -2,9 +2,10 @@ import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { Card } from "@/components/Card";
-import { colors } from "@/constants/colors";
+import type { AppColors } from "@/constants/colors";
 import { spacing } from "@/constants/spacing";
 import { typography } from "@/constants/typography";
+import { useThemeColors } from "@/theme/ThemeProvider";
 import type { Exercise } from "@/types/exercise";
 
 import { ExerciseList } from "./ExerciseList";
@@ -18,6 +19,8 @@ type ExercisePickerProps = {
 const allMuscleGroups = Array.from(new Set(mockExercises.map((exercise) => exercise.muscleGroup)));
 
 export function ExercisePicker({ onSelect }: ExercisePickerProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const [query, setQuery] = useState("");
   const [selectedMuscleGroup, setSelectedMuscleGroup] = useState<string | null>(null);
 
@@ -65,6 +68,9 @@ type FilterPillProps = {
 };
 
 function FilterPill({ label, isSelected, onPress }: FilterPillProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
+
   return (
     <Pressable
       accessibilityRole="button"
@@ -80,7 +86,8 @@ function FilterPill({ label, isSelected, onPress }: FilterPillProps) {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: AppColors) {
+  return StyleSheet.create({
   filterRow: {
     flexDirection: "row",
     gap: spacing.sm,
@@ -105,7 +112,7 @@ const styles = StyleSheet.create({
     lineHeight: typography.lineHeights.caption,
   },
   filterTextSelected: {
-    color: colors.surface,
+    color: colors.onPrimary,
   },
   helperText: {
     color: colors.textMuted,
@@ -115,4 +122,5 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.84,
   },
-});
+  });
+}

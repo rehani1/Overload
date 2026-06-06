@@ -7,12 +7,13 @@ import { Card } from "@/components/Card";
 import { EmptyState } from "@/components/EmptyState";
 import { Input } from "@/components/Input";
 import { Screen } from "@/components/Screen";
-import { colors } from "@/constants/colors";
+import type { AppColors } from "@/constants/colors";
 import { spacing } from "@/constants/spacing";
 import { typography } from "@/constants/typography";
 import { ExercisePicker } from "@/features/exercises/ExercisePicker";
 import { useActiveWorkoutStore } from "@/store/useActiveWorkoutStore";
 import { useWorkoutHistoryStore } from "@/store/useWorkoutHistoryStore";
+import { useThemeColors } from "@/theme/ThemeProvider";
 import type { WorkoutSet } from "@/types/workout";
 
 export default function ActiveWorkoutScreen() {
@@ -29,6 +30,8 @@ export default function ActiveWorkoutScreen() {
     finishWorkout,
   } = useActiveWorkoutStore();
   const { addCompletedWorkout } = useWorkoutHistoryStore();
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const [isPickerVisible, setIsPickerVisible] = useState(false);
 
   useEffect(() => {
@@ -159,6 +162,9 @@ type WorkoutSetRowProps = {
 };
 
 function WorkoutSetRow({ set, onUpdate, onRemove }: WorkoutSetRowProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
+
   return (
     <View style={styles.setRow}>
       <Text style={styles.setNumber}>Set {set.setNumber}</Text>
@@ -203,7 +209,8 @@ function parseOptionalNumber(value: string) {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: AppColors) {
+  return StyleSheet.create({
   content: {
     gap: spacing.xl,
     paddingBottom: spacing.xxl,
@@ -225,14 +232,14 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   heroTitle: {
-    color: colors.surface,
+    color: colors.onPrimary,
     fontSize: typography.sizes.display,
     fontWeight: typography.weights.bold,
     letterSpacing: -0.7,
     lineHeight: typography.lineHeights.display,
   },
   heroSubtitle: {
-    color: "#D8D1F5",
+    color: colors.heroTextMuted,
     fontSize: typography.sizes.body,
     lineHeight: typography.lineHeights.body,
   },
@@ -307,4 +314,5 @@ const styles = StyleSheet.create({
   setInputs: {
     gap: spacing.sm,
   },
-});
+  });
+}

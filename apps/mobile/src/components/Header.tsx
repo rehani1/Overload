@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-import { colors } from "@/constants/colors";
+import type { AppColors } from "@/constants/colors";
 import { spacing } from "@/constants/spacing";
 import { typography } from "@/constants/typography";
+import { useThemeColors } from "@/theme/ThemeProvider";
 
 type HeaderProps = {
   title: string;
@@ -12,6 +13,9 @@ type HeaderProps = {
 };
 
 export function Header({ title, subtitle, action }: HeaderProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
+
   return (
     <View style={styles.header}>
       <View style={styles.copy}>
@@ -23,7 +27,8 @@ export function Header({ title, subtitle, action }: HeaderProps) {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: AppColors) {
+  return StyleSheet.create({
   header: {
     alignItems: "flex-start",
     flexDirection: "row",
@@ -49,4 +54,5 @@ const styles = StyleSheet.create({
     lineHeight: typography.lineHeights.body,
     maxWidth: 420,
   },
-});
+  });
+}

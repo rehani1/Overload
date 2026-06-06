@@ -1,14 +1,18 @@
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
-import { colors } from "@/constants/colors";
+import type { AppColors } from "@/constants/colors";
 import { spacing } from "@/constants/spacing";
 import { typography } from "@/constants/typography";
+import { useThemeColors } from "@/theme/ThemeProvider";
 
 type LoadingStateProps = {
   message?: string;
 };
 
 export function LoadingState({ message = "Loading..." }: LoadingStateProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
+
   return (
     <View style={styles.container}>
       <ActivityIndicator color={colors.primary} />
@@ -17,7 +21,8 @@ export function LoadingState({ message = "Loading..." }: LoadingStateProps) {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: AppColors) {
+  return StyleSheet.create({
   container: {
     alignItems: "center",
     backgroundColor: colors.surface,
@@ -32,4 +37,5 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.body,
     lineHeight: typography.lineHeights.body,
   },
-});
+  });
+}

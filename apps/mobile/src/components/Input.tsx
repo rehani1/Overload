@@ -1,8 +1,9 @@
 import { StyleSheet, Text, TextInput, View, type KeyboardTypeOptions } from "react-native";
 
-import { colors } from "@/constants/colors";
+import type { AppColors } from "@/constants/colors";
 import { spacing } from "@/constants/spacing";
 import { typography } from "@/constants/typography";
+import { useThemeColors } from "@/theme/ThemeProvider";
 
 type InputProps = {
   label?: string;
@@ -21,6 +22,9 @@ export function Input({
   secureTextEntry = false,
   keyboardType = "default",
 }: InputProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
+
   return (
     <View style={styles.field}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
@@ -39,7 +43,8 @@ export function Input({
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: AppColors) {
+  return StyleSheet.create({
   field: {
     gap: spacing.xs,
   },
@@ -63,4 +68,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
   },
-});
+  });
+}

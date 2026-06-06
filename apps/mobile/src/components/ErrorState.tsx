@@ -1,8 +1,9 @@
 import { StyleSheet, Text, View } from "react-native";
 
-import { colors } from "@/constants/colors";
+import type { AppColors } from "@/constants/colors";
 import { spacing } from "@/constants/spacing";
 import { typography } from "@/constants/typography";
+import { useThemeColors } from "@/theme/ThemeProvider";
 
 type ErrorStateProps = {
   title?: string;
@@ -10,6 +11,9 @@ type ErrorStateProps = {
 };
 
 export function ErrorState({ title = "Something went wrong", message }: ErrorStateProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>{title}</Text>
@@ -18,7 +22,8 @@ export function ErrorState({ title = "Something went wrong", message }: ErrorSta
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: AppColors) {
+  return StyleSheet.create({
   container: {
     backgroundColor: colors.dangerMuted,
     borderColor: colors.danger,
@@ -38,4 +43,5 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.body,
     lineHeight: typography.lineHeights.body,
   },
-});
+  });
+}

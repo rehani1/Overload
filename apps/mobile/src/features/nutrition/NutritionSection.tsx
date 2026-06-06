@@ -12,10 +12,11 @@ import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { EmptyState } from "@/components/EmptyState";
 import { Input } from "@/components/Input";
-import { colors } from "@/constants/colors";
+import type { AppColors } from "@/constants/colors";
 import { spacing } from "@/constants/spacing";
 import { typography } from "@/constants/typography";
 import { useNutritionStore } from "@/store/useNutritionStore";
+import { useThemeColors } from "@/theme/ThemeProvider";
 import type {
   MealType,
   NutritionEntry,
@@ -70,6 +71,8 @@ export function NutritionSection({
     updateEntry,
     updateTarget,
   } = useNutritionStore();
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const [localSelectedDate, setLocalSelectedDate] = useState(getDateKeyFromDate(new Date()));
   const [entryDraft, setEntryDraft] = useState<NutritionEntryFormState>(
     getEmptyEntryFormState(),
@@ -441,6 +444,8 @@ type NutritionMetricProps = {
 };
 
 function NutritionMetric({ label, target, unit, value }: NutritionMetricProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const progress = target > 0 ? Math.min(value / target, 1) : 0;
 
   return (
@@ -474,6 +479,8 @@ function NutritionTargetModal({
   onSave,
   target,
 }: NutritionTargetModalProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const [targetDraft, setTargetDraft] = useState<NutritionTargetFormState>(
     getTargetFormState(target),
   );
@@ -582,6 +589,8 @@ function NutritionEntryModal({
   onDelete,
   onSubmit,
 }: NutritionEntryModalProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const isEditing = mode === "edit";
 
   return (
@@ -631,6 +640,9 @@ function NutritionEntryForm({
   onSubmit,
   submitLabel,
 }: NutritionEntryFormProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
+
   return (
     <View style={styles.form}>
       <View style={styles.mealTypeRow}>
@@ -722,6 +734,9 @@ function NutritionEntryItem({
   entry,
   onStartEdit,
 }: NutritionEntryItemProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
+
   return (
     <View style={styles.entryItem}>
       <View style={styles.entryHeader}>
@@ -939,7 +954,8 @@ function parsePositiveNumber(value: string) {
   return Math.round(parsedValue * 10) / 10;
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: AppColors) {
+  return StyleSheet.create({
   content: {
     gap: spacing.xl,
   },
@@ -1004,7 +1020,7 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
   },
   selectedMealTypeText: {
-    color: colors.surface,
+    color: colors.onPrimary,
   },
   metricGrid: {
     flexDirection: "row",
@@ -1148,4 +1164,5 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     padding: spacing.md,
   },
-});
+  });
+}

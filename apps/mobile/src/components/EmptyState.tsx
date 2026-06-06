@@ -1,8 +1,9 @@
 import { StyleSheet, Text, View } from "react-native";
 
-import { colors } from "@/constants/colors";
+import type { AppColors } from "@/constants/colors";
 import { spacing } from "@/constants/spacing";
 import { typography } from "@/constants/typography";
+import { useThemeColors } from "@/theme/ThemeProvider";
 
 type EmptyStateProps = {
   title: string;
@@ -10,6 +11,9 @@ type EmptyStateProps = {
 };
 
 export function EmptyState({ title, message }: EmptyStateProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>{title}</Text>
@@ -18,7 +22,8 @@ export function EmptyState({ title, message }: EmptyStateProps) {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: AppColors) {
+  return StyleSheet.create({
   container: {
     alignItems: "center",
     backgroundColor: colors.surfaceMuted,
@@ -42,4 +47,5 @@ const styles = StyleSheet.create({
     maxWidth: 280,
     textAlign: "center",
   },
-});
+  });
+}

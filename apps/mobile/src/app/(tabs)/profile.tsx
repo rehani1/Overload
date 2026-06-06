@@ -1,18 +1,22 @@
 import { router } from "expo-router";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { Header } from "@/components/Header";
 import { Screen } from "@/components/Screen";
-import { colors } from "@/constants/colors";
+import type { AppColors } from "@/constants/colors";
 import { spacing } from "@/constants/spacing";
 import { typography } from "@/constants/typography";
 import { mockUser } from "@/features/profile/mockUser";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useAppTheme, useThemeColors } from "@/theme/ThemeProvider";
 
 export default function ProfileScreen() {
   const { logout, user } = useAuthStore();
+  const { isDark, setThemePreference } = useAppTheme();
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const profileUser = user ?? mockUser;
   const fullName = `${profileUser.firstName} ${profileUser.lastName}`;
 
@@ -61,6 +65,12 @@ export default function ProfileScreen() {
 
         <Card title="Settings">
           <SettingsRow label="Training goal" value={profileUser.goal} />
+          <SettingsToggleRow
+            label="Dark mode"
+            value={isDark}
+            helperText="Override your device appearance for this app."
+            onValueChange={(enabled) => setThemePreference(enabled ? "dark" : "light")}
+          />
           <SettingsRow label="Notifications" value="Quiet for now" />
           <SettingsRow label="Data sync" value="Local until backend connects" />
         </Card>
@@ -85,6 +95,9 @@ type SettingsRowProps = {
 };
 
 function SettingsRow({ label, value }: SettingsRowProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
+
   return (
     <View style={styles.settingsRow}>
       <Text style={styles.bodyText}>{label}</Text>
@@ -93,7 +106,39 @@ function SettingsRow({ label, value }: SettingsRowProps) {
   );
 }
 
-const styles = StyleSheet.create({
+type SettingsToggleRowProps = {
+  helperText: string;
+  label: string;
+  onValueChange: (value: boolean) => void;
+  value: boolean;
+};
+
+function SettingsToggleRow({ helperText, label, onValueChange, value }: SettingsToggleRowProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
+
+  return (
+    <View style={styles.settingsToggleRow}>
+      <View style={styles.settingsToggleCopy}>
+        <Text style={styles.bodyText}>{label}</Text>
+        <Text style={styles.mutedText}>{helperText}</Text>
+      </View>
+      <Switch
+        ios_backgroundColor={colors.surfaceMuted}
+        onValueChange={onValueChange}
+        thumbColor={colors.surfaceElevated}
+        trackColor={{
+          false: colors.borderStrong,
+          true: colors.accent,
+        }}
+        value={value}
+      />
+    </View>
+  );
+}
+
+function createStyles(colors: AppColors) {
+  return StyleSheet.create({
   content: {
     gap: spacing.xl,
     paddingBottom: spacing.xxl,
@@ -135,13 +180,13 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   heroTitle: {
-    color: colors.surface,
+    color: colors.onPrimary,
     fontSize: typography.sizes.title,
     fontWeight: typography.weights.bold,
     lineHeight: typography.lineHeights.title,
   },
   heroSubtitle: {
-    color: "#D8D1F5",
+    color: colors.heroTextMuted,
     fontSize: typography.sizes.small,
     lineHeight: typography.lineHeights.small,
   },
@@ -154,7 +199,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   statusPillText: {
-    color: colors.surface,
+    color: colors.onPrimary,
     fontSize: typography.sizes.caption,
     fontWeight: typography.weights.semibold,
     lineHeight: typography.lineHeights.caption,
@@ -202,4 +247,18 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     paddingVertical: spacing.md,
   },
-});
+  settingsToggleRow: {
+    alignItems: "center",
+    borderBottomColor: colors.border,
+    borderBottomWidth: 1,
+    flexDirection: "row",
+    gap: spacing.md,
+    justifyContent: "space-between",
+    paddingVertical: spacing.md,
+  },
+  settingsToggleCopy: {
+    flex: 1,
+    gap: spacing.sm,
+  },
+  });
+}

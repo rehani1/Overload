@@ -9,11 +9,12 @@ import {
 } from "@/api/workoutApi";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
-import { colors } from "@/constants/colors";
+import type { AppColors } from "@/constants/colors";
 import { spacing } from "@/constants/spacing";
 import { typography } from "@/constants/typography";
 import { useNutritionStore } from "@/store/useNutritionStore";
 import { useWorkoutHistoryStore } from "@/store/useWorkoutHistoryStore";
+import { useThemeColors } from "@/theme/ThemeProvider";
 import type { NutritionEntry } from "@/types/nutrition";
 import type { Workout } from "@/types/workout";
 
@@ -31,6 +32,8 @@ type WorkoutCalendarProps = {
 export function WorkoutCalendar({ onDatePress }: WorkoutCalendarProps) {
   const { workouts } = useWorkoutHistoryStore();
   const { entries: nutritionEntries } = useNutritionStore();
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const completedWorkouts = workouts.filter((workout) => workout.status === "completed");
   const initialDate = completedWorkouts[0]?.date ?? new Date().toISOString();
   const [selectedDateKey, setSelectedDateKey] = useState(getDateKey(initialDate));
@@ -189,6 +192,8 @@ export function WorkoutDateDetails({ selectedDateKey }: WorkoutDateDetailsProps)
     updateWorkout,
     workouts,
   } = useWorkoutHistoryStore();
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const completedWorkouts = workouts.filter((workout) => workout.status === "completed");
   const [editingWorkout, setEditingWorkout] = useState<Workout | null>(null);
   const [isDeletePending, setIsDeletePending] = useState(false);
@@ -465,6 +470,8 @@ function WorkoutCalendarItem({
   onStartEdit,
   workout,
 }: WorkoutCalendarItemProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const setCount = workout.exercises.reduce(
     (total, workoutExercise) => total + workoutExercise.sets.length,
     0,
@@ -667,7 +674,8 @@ function parseMonthKey(monthKey: string) {
   return new Date(year, month - 1, 1);
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: AppColors) {
+  return StyleSheet.create({
   content: {
     gap: spacing.lg,
   },
@@ -840,7 +848,7 @@ const styles = StyleSheet.create({
     color: colors.primary,
   },
   selectedDayText: {
-    color: colors.surface,
+    color: colors.onPrimary,
   },
   dayMarkers: {
     alignItems: "flex-end",
@@ -984,4 +992,5 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.body,
     lineHeight: typography.lineHeights.body,
   },
-});
+  });
+}

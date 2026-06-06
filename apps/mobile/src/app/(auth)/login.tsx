@@ -7,13 +7,16 @@ import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { Input } from "@/components/Input";
 import { Screen } from "@/components/Screen";
-import { colors } from "@/constants/colors";
+import type { AppColors } from "@/constants/colors";
 import { spacing } from "@/constants/spacing";
 import { typography } from "@/constants/typography";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useThemeColors } from "@/theme/ThemeProvider";
 
 export default function LoginScreen() {
   const { login } = useAuthStore();
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const [email, setEmail] = useState("rehan@example.com");
   const [password, setPassword] = useState("password");
 
@@ -67,7 +70,8 @@ export default function LoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: AppColors) {
+  return StyleSheet.create({
   content: {
     flexGrow: 1,
     gap: spacing.xl,
@@ -122,4 +126,5 @@ const styles = StyleSheet.create({
     lineHeight: typography.lineHeights.body,
     textAlign: "center",
   },
-});
+  });
+}

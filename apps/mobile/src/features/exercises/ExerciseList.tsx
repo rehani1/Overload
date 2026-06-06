@@ -1,9 +1,10 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { EmptyState } from "@/components/EmptyState";
-import { colors } from "@/constants/colors";
+import type { AppColors } from "@/constants/colors";
 import { spacing } from "@/constants/spacing";
 import { typography } from "@/constants/typography";
+import { useThemeColors } from "@/theme/ThemeProvider";
 import type { Exercise } from "@/types/exercise";
 
 type ExerciseListProps = {
@@ -12,6 +13,9 @@ type ExerciseListProps = {
 };
 
 export function ExerciseList({ exercises, onSelect }: ExerciseListProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
+
   if (exercises.length === 0) {
     return <EmptyState title="No exercises found" message="Try a different search or muscle group." />;
   }
@@ -38,7 +42,8 @@ export function ExerciseList({ exercises, onSelect }: ExerciseListProps) {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: AppColors) {
+  return StyleSheet.create({
   list: {
     gap: spacing.sm,
   },
@@ -83,4 +88,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
   },
-});
+  });
+}

@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
 import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
 
-import { colors } from "@/constants/colors";
+import type { AppColors } from "@/constants/colors";
 import { spacing } from "@/constants/spacing";
 import { typography } from "@/constants/typography";
+import { useThemeColors } from "@/theme/ThemeProvider";
 
 type CardProps = {
   children: ReactNode;
@@ -12,6 +13,9 @@ type CardProps = {
 };
 
 export function Card({ children, title, style }: CardProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
+
   return (
     <View style={[styles.card, style]}>
       {title ? <Text style={styles.title}>{title}</Text> : null}
@@ -20,7 +24,8 @@ export function Card({ children, title, style }: CardProps) {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: AppColors) {
+  return StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
@@ -36,4 +41,5 @@ const styles = StyleSheet.create({
     fontWeight: typography.weights.semibold,
     lineHeight: typography.lineHeights.title,
   },
-});
+  });
+}

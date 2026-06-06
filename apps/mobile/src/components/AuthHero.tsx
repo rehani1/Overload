@@ -1,8 +1,9 @@
 import { StyleSheet, Text, View } from "react-native";
 
-import { colors } from "@/constants/colors";
+import type { AppColors } from "@/constants/colors";
 import { spacing } from "@/constants/spacing";
 import { typography } from "@/constants/typography";
+import { useThemeColors } from "@/theme/ThemeProvider";
 
 type AuthHeroProps = {
   eyebrow: string;
@@ -12,6 +13,9 @@ type AuthHeroProps = {
 };
 
 export function AuthHero({ details = [], eyebrow, subtitle, title }: AuthHeroProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
+
   return (
     <View style={styles.hero}>
       <Text style={styles.eyebrow}>{eyebrow}</Text>
@@ -31,7 +35,8 @@ export function AuthHero({ details = [], eyebrow, subtitle, title }: AuthHeroPro
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: AppColors) {
+  return StyleSheet.create({
   hero: {
     backgroundColor: colors.primary,
     borderColor: "rgba(255, 252, 246, 0.18)",
@@ -50,14 +55,14 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   title: {
-    color: colors.surface,
+    color: colors.onPrimary,
     fontSize: typography.sizes.display,
     fontWeight: typography.weights.bold,
     letterSpacing: -0.7,
     lineHeight: typography.lineHeights.display,
   },
   subtitle: {
-    color: "#D8D1F5",
+    color: colors.heroTextMuted,
     fontSize: typography.sizes.body,
     lineHeight: typography.lineHeights.body,
   },
@@ -76,9 +81,10 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   detailText: {
-    color: colors.surface,
+    color: colors.onPrimary,
     fontSize: typography.sizes.caption,
     fontWeight: typography.weights.semibold,
     lineHeight: typography.lineHeights.caption,
   },
-});
+  });
+}

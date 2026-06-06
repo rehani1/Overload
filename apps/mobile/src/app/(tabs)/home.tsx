@@ -4,13 +4,16 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-nati
 
 import { Button } from "@/components/Button";
 import { Screen } from "@/components/Screen";
-import { colors } from "@/constants/colors";
+import type { AppColors } from "@/constants/colors";
 import { spacing } from "@/constants/spacing";
 import { typography } from "@/constants/typography";
 import { NutritionSection } from "@/features/nutrition/NutritionSection";
 import { WorkoutCalendar, WorkoutDateDetails } from "@/features/workouts/WorkoutCalendar";
+import { useThemeColors } from "@/theme/ThemeProvider";
 
 export default function HomeScreen() {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
 
   return (
@@ -60,6 +63,9 @@ type DateDetailsModalProps = {
 };
 
 function DateDetailsModal({ onClose, selectedDateKey }: DateDetailsModalProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
+
   return (
     <Modal
       animationType="slide"
@@ -117,7 +123,8 @@ function formatDateTitle(dateKey: string) {
   }).format(new Date(year, month - 1, day, 12));
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: AppColors) {
+  return StyleSheet.create({
   content: {
     gap: spacing.xl,
     paddingBottom: spacing.xxl,
@@ -142,14 +149,14 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   heroTitle: {
-    color: colors.surface,
+    color: colors.onPrimary,
     fontSize: typography.sizes.display,
     fontWeight: typography.weights.bold,
     letterSpacing: -0.7,
     lineHeight: typography.lineHeights.display,
   },
   heroSubtitle: {
-    color: "#D8D1F5",
+    color: colors.heroTextMuted,
     fontSize: typography.sizes.body,
     lineHeight: typography.lineHeights.body,
   },
@@ -173,7 +180,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   heroPillText: {
-    color: colors.surface,
+    color: colors.onPrimary,
     fontSize: typography.sizes.caption,
     fontWeight: typography.weights.semibold,
     lineHeight: typography.lineHeights.caption,
@@ -249,4 +256,5 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.84,
   },
-});
+  });
+}
