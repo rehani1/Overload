@@ -50,10 +50,13 @@ export function WorkoutCalendar({ onDatePress }: WorkoutCalendarProps) {
     <View style={styles.content}>
       <View style={styles.calendarPanel}>
         <View style={styles.calendarHeader}>
-          <Text style={styles.monthTitle}>
-            <Text style={styles.monthTitleStrong}>{formatMonthName(visibleMonthDate)}</Text>
-            <Text style={styles.monthTitleYear}> {formatYear(visibleMonthDate)}</Text>
-          </Text>
+          <View style={styles.monthTitleGroup}>
+            <Text style={styles.calendarEyebrow}>Training calendar</Text>
+            <Text style={styles.monthTitle}>
+              <Text style={styles.monthTitleStrong}>{formatMonthName(visibleMonthDate)}</Text>
+              <Text style={styles.monthTitleYear}> {formatYear(visibleMonthDate)}</Text>
+            </Text>
+          </View>
 
           <View style={styles.monthNav}>
             <Pressable
@@ -72,6 +75,17 @@ export function WorkoutCalendar({ onDatePress }: WorkoutCalendarProps) {
             >
               <Text style={styles.monthNavText}>{">"}</Text>
             </Pressable>
+          </View>
+        </View>
+
+        <View style={styles.calendarLegend}>
+          <View style={styles.legendItem}>
+            <View style={styles.workoutDot} />
+            <Text style={styles.legendText}>Workout entries</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={styles.nutritionDot} />
+            <Text style={styles.legendText}>Nutrition entries</Text>
           </View>
         </View>
 
@@ -359,7 +373,10 @@ export function WorkoutDateDetails({ selectedDateKey }: WorkoutDateDetailsProps)
           <Button onPress={handleStartAdd}>Add Workout</Button>
         </View>
         {selectedWorkouts.length === 0 ? (
-          <Text style={styles.mutedText}>No completed session on this date.</Text>
+          <View style={styles.emptyInline}>
+            <Text style={styles.emptyInlineTitle}>No workout recorded</Text>
+            <Text style={styles.mutedText}>Add a session for this date when you have one to preserve.</Text>
+          </View>
         ) : (
           <View style={styles.sessionList}>
             {selectedWorkouts.map((workout) => (
@@ -397,7 +414,7 @@ export function WorkoutDateDetails({ selectedDateKey }: WorkoutDateDetailsProps)
           </View>
 
           <ScrollView contentContainerStyle={styles.modalContent} showsVerticalScrollIndicator={false}>
-            {editingWorkout && draftWorkout ? (
+            {draftWorkout ? (
               <>
                 <WorkoutCalendarEditor
                   draftWorkout={draftWorkout}
@@ -672,11 +689,28 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   calendarPanel: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: 34,
+    borderWidth: 1,
+    boxShadow: `0px 16px 34px ${colors.shadow}`,
     gap: spacing.lg,
+    padding: spacing.lg,
+  },
+  monthTitleGroup: {
+    flex: 1,
+    gap: spacing.xs,
+  },
+  calendarEyebrow: {
+    color: colors.textMuted,
+    fontSize: typography.sizes.caption,
+    fontWeight: typography.weights.semibold,
+    letterSpacing: 0.8,
+    lineHeight: typography.lineHeights.caption,
+    textTransform: "uppercase",
   },
   monthTitle: {
     color: colors.text,
-    flex: 1,
     fontSize: typography.sizes.display,
     lineHeight: typography.lineHeights.display,
   },
@@ -694,13 +728,13 @@ const styles = StyleSheet.create({
   },
   monthNavButton: {
     alignItems: "center",
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: colors.surfaceElevated,
     borderColor: colors.border,
-    borderRadius: 18,
+    borderRadius: 999,
     borderWidth: 1,
-    height: 36,
+    height: 40,
     justifyContent: "center",
-    width: 36,
+    width: 40,
   },
   monthNavText: {
     color: colors.text,
@@ -708,10 +742,32 @@ const styles = StyleSheet.create({
     fontWeight: typography.weights.semibold,
     lineHeight: typography.lineHeights.subtitle,
   },
-  calendarSurface: {
-    backgroundColor: colors.background,
+  calendarLegend: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+  },
+  legendItem: {
+    alignItems: "center",
+    backgroundColor: colors.surfaceMuted,
     borderColor: colors.border,
-    borderRadius: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  legendText: {
+    color: colors.textMuted,
+    fontSize: typography.sizes.caption,
+    fontWeight: typography.weights.semibold,
+    lineHeight: typography.lineHeights.caption,
+  },
+  calendarSurface: {
+    backgroundColor: colors.surfaceElevated,
+    borderColor: colors.border,
+    borderRadius: 24,
     borderWidth: 1,
     overflow: "hidden",
   },
@@ -723,21 +779,23 @@ const styles = StyleSheet.create({
   weekdayText: {
     color: colors.textMuted,
     flex: 1,
-    fontSize: typography.sizes.body,
-    fontWeight: typography.weights.medium,
-    lineHeight: typography.lineHeights.body,
+    fontSize: typography.sizes.caption,
+    fontWeight: typography.weights.semibold,
+    letterSpacing: 0.5,
+    lineHeight: typography.lineHeights.caption,
     paddingVertical: spacing.md,
     textAlign: "center",
+    textTransform: "uppercase",
   },
   calendarGrid: {
-    backgroundColor: colors.background,
+    backgroundColor: colors.surfaceElevated,
   },
   weekRow: {
     flexDirection: "row",
   },
   dayCell: {
     alignItems: "flex-end",
-    backgroundColor: colors.background,
+    backgroundColor: colors.surfaceElevated,
     borderBottomColor: colors.border,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
@@ -745,7 +803,7 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: spacing.xs,
     justifyContent: "flex-start",
-    minHeight: 74,
+    minHeight: 78,
     paddingHorizontal: spacing.xs,
     paddingTop: spacing.sm,
   },
@@ -753,10 +811,10 @@ const styles = StyleSheet.create({
     borderRightWidth: 0,
   },
   outsideMonthDayCell: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceMuted,
   },
   selectedDayCell: {
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: colors.accentMuted,
   },
   dayNumberBadge: {
     alignItems: "center",
@@ -776,13 +834,13 @@ const styles = StyleSheet.create({
     lineHeight: typography.lineHeights.body,
   },
   outsideMonthDayNumber: {
-    color: "#70757D",
+    color: colors.borderStrong,
   },
   todayDayNumber: {
     color: colors.primary,
   },
   selectedDayText: {
-    color: colors.background,
+    color: colors.surface,
   },
   dayMarkers: {
     alignItems: "flex-end",
@@ -795,16 +853,16 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   workoutDot: {
-    backgroundColor: colors.success,
-    borderRadius: 3,
-    height: 6,
-    width: 6,
+    backgroundColor: colors.workout,
+    borderRadius: 4,
+    height: 8,
+    width: 8,
   },
   nutritionDot: {
-    backgroundColor: colors.danger,
-    borderRadius: 3,
-    height: 6,
-    width: 6,
+    backgroundColor: colors.nutrition,
+    borderRadius: 4,
+    height: 8,
+    width: 8,
   },
   entryMarkerText: {
     color: colors.textMuted,
@@ -824,7 +882,7 @@ const styles = StyleSheet.create({
     gap: spacing.lg,
     justifyContent: "space-between",
     paddingBottom: spacing.lg,
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.xl,
     paddingTop: spacing.xxl,
   },
   modalTitleGroup: {
@@ -834,7 +892,8 @@ const styles = StyleSheet.create({
   modalEyebrow: {
     color: colors.textMuted,
     fontSize: typography.sizes.caption,
-    fontWeight: typography.weights.medium,
+    fontWeight: typography.weights.semibold,
+    letterSpacing: 0.8,
     lineHeight: typography.lineHeights.caption,
     textTransform: "uppercase",
   },
@@ -845,12 +904,12 @@ const styles = StyleSheet.create({
     lineHeight: typography.lineHeights.title,
   },
   modalContent: {
-    gap: spacing.lg,
-    padding: spacing.lg,
+    gap: spacing.xl,
+    padding: spacing.xl,
     paddingBottom: spacing.xxl,
   },
   closeButton: {
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: colors.surfaceElevated,
     borderColor: colors.border,
     borderRadius: 999,
     borderWidth: 1,
@@ -869,10 +928,10 @@ const styles = StyleSheet.create({
   sessionItem: {
     backgroundColor: colors.surfaceMuted,
     borderColor: colors.border,
-    borderRadius: 8,
+    borderRadius: 22,
     borderWidth: 1,
     gap: spacing.sm,
-    padding: spacing.md,
+    padding: spacing.lg,
   },
   actionRow: {
     flexDirection: "row",
@@ -881,15 +940,29 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   confirmationBox: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.dangerMuted,
     borderColor: colors.danger,
-    borderRadius: 8,
+    borderRadius: 22,
     borderWidth: 1,
     gap: spacing.sm,
     marginTop: spacing.md,
     padding: spacing.md,
   },
   confirmationTitle: {
+    color: colors.text,
+    fontSize: typography.sizes.body,
+    fontWeight: typography.weights.semibold,
+    lineHeight: typography.lineHeights.body,
+  },
+  emptyInline: {
+    backgroundColor: colors.surfaceMuted,
+    borderColor: colors.border,
+    borderRadius: 22,
+    borderWidth: 1,
+    gap: spacing.xs,
+    padding: spacing.lg,
+  },
+  emptyInlineTitle: {
     color: colors.text,
     fontSize: typography.sizes.body,
     fontWeight: typography.weights.semibold,
