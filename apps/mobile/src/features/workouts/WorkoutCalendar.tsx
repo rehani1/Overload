@@ -8,7 +8,6 @@ import {
 } from "@/api/workoutApi";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
-import { EmptyState } from "@/components/EmptyState";
 import { colors } from "@/constants/colors";
 import { spacing } from "@/constants/spacing";
 import { typography } from "@/constants/typography";
@@ -22,12 +21,134 @@ type SyncState = {
   message: string;
 };
 
-export function WorkoutCalendar() {
-  const { deleteWorkout, restoreWorkout, updateWorkout, workouts } = useWorkoutHistoryStore();
+type WorkoutCalendarProps = {
+  onDatePress?: (dateKey: string) => void;
+};
+
+export function WorkoutCalendar({ onDatePress }: WorkoutCalendarProps) {
+  const { workouts } = useWorkoutHistoryStore();
   const completedWorkouts = workouts.filter((workout) => workout.status === "completed");
   const initialDate = completedWorkouts[0]?.date ?? new Date().toISOString();
   const [selectedDateKey, setSelectedDateKey] = useState(getDateKey(initialDate));
   const [visibleMonthKey, setVisibleMonthKey] = useState(getMonthKey(new Date(initialDate)));
+  const visibleMonthDate = parseMonthKey(visibleMonthKey);
+  const workoutsByDate = groupWorkoutsByDate(completedWorkouts);
+  const calendarWeeks = buildCalendarWeeks(visibleMonthDate);
+
+  function handleMonthChange(monthOffset: number) {
+    const nextMonthDate = addMonths(visibleMonthDate, monthOffset);
+    setVisibleMonthKey(getMonthKey(nextMonthDate));
+    setSelectedDateKey(getDateKeyFromDate(new Date(nextMonthDate.getFullYear(), nextMonthDate.getMonth(), 1)));
+  }
+
+  return (
+    <View style={styles.content}>
+      <View style={styles.calendarPanel}>
+        <View style={styles.calendarHeader}>
+          <Text style={styles.monthTitle}>
+            <Text style={styles.monthTitleStrong}>{formatMonthName(visibleMonthDate)}</Text>
+            <Text style={styles.monthTitleYear}> {formatYear(visibleMonthDate)}</Text>
+          </Text>
+
+          <View style={styles.monthNav}>
+            <Pressable
+              accessibilityLabel="Previous month"
+              accessibilityRole="button"
+              onPress={() => handleMonthChange(-1)}
+              style={({ pressed }) => [styles.monthNavButton, pressed && styles.pressed]}
+            >
+              <Text style={styles.monthNavText}>{"<"}</Text>
+            </Pressable>
+            <Pressable
+              accessibilityLabel="Next month"
+              accessibilityRole="button"
+              onPress={() => handleMonthChange(1)}
+              style={({ pressed }) => [styles.monthNavButton, pressed && styles.pressed]}
+            >
+              <Text style={styles.monthNavText}>{">"}</Text>
+            </Pressable>
+          </View>
+        </View>
+
+        <View style={styles.calendarSurface}>
+          <View style={styles.weekdayRow}>
+            {weekdays.map((weekday) => (
+              <Text key={weekday} style={styles.weekdayText}>
+                {weekday}
+              </Text>
+            ))}
+          </View>
+
+          <View style={styles.calendarGrid}>
+            {calendarWeeks.map((week, weekIndex) => (
+              <View key={`week-${weekIndex}`} style={styles.weekRow}>
+                {week.map((day, dayIndex) => {
+                  const workoutsForDay = workoutsByDate.get(day.dateKey) ?? [];
+                  const isSelected = day.dateKey === selectedDateKey;
+
+                  return (
+                    <Pressable
+                      accessibilityLabel={`${formatAccessibilityDate(day.dateKey)}, ${
+                        workoutsForDay.length
+                      } completed workouts`}
+                      accessibilityRole="button"
+                      key={day.dateKey}
+                      onPress={() => {
+                        setVisibleMonthKey(getMonthKey(day.date));
+                        setSelectedDateKey(day.dateKey);
+                        onDatePress?.(day.dateKey);
+                      }}
+                      style={({ pressed }) => [
+                        styles.dayCell,
+                        dayIndex === week.length - 1 && styles.lastDayCell,
+                        !day.isCurrentMonth && styles.outsideMonthDayCell,
+                        isSelected && styles.selectedDayCell,
+                        pressed && styles.pressed,
+                      ]}
+                    >
+                      <View
+                        style={[
+                          styles.dayNumberBadge,
+                          isSelected && styles.selectedDayNumberBadge,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.dayNumber,
+                            !day.isCurrentMonth && styles.outsideMonthDayNumber,
+                            day.isToday && styles.todayDayNumber,
+                            isSelected && styles.selectedDayText,
+                          ]}
+                        >
+                          {formatCalendarDayLabel(day)}
+                        </Text>
+                      </View>
+
+                      {workoutsForDay.length > 0 ? (
+                        <View style={styles.workoutMarker}>
+                          <View style={styles.workoutDot} />
+                          <Text style={styles.workoutMarkerText}>{workoutsForDay.length}</Text>
+                        </View>
+                      ) : null}
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ))}
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+type WorkoutDateDetailsProps = {
+  selectedDateKey: string;
+};
+
+export function WorkoutDateDetails({ selectedDateKey }: WorkoutDateDetailsProps) {
+  const { deleteWorkout, restoreWorkout, updateWorkout, workouts } = useWorkoutHistoryStore();
+  const completedWorkouts = workouts.filter((workout) => workout.status === "completed");
   const [editingWorkoutId, setEditingWorkoutId] = useState<string | null>(null);
   const [deleteCandidateId, setDeleteCandidateId] = useState<string | null>(null);
   const [draftWorkout, setDraftWorkout] = useState<Workout | null>(null);
@@ -37,9 +158,7 @@ export function WorkoutCalendar() {
       ? "Backend sync is enabled."
       : "Saved locally. Backend sync will activate when API URL is configured.",
   });
-  const visibleMonthDate = parseMonthKey(visibleMonthKey);
   const workoutsByDate = groupWorkoutsByDate(completedWorkouts);
-  const calendarWeeks = buildCalendarWeeks(visibleMonthDate);
   const selectedWorkouts = workoutsByDate.get(selectedDateKey) ?? [];
 
   function handleCancelDelete() {
@@ -76,20 +195,11 @@ export function WorkoutCalendar() {
       });
     } catch {
       restoreWorkout(workout);
-      setSelectedDateKey(getDateKey(workout.date));
-      setVisibleMonthKey(getMonthKey(new Date(workout.date)));
       setSyncState({
         kind: "error",
         message: "Delete sync failed. Workout was restored locally.",
       });
     }
-  }
-
-  function handleMonthChange(monthOffset: number) {
-    const nextMonthDate = addMonths(visibleMonthDate, monthOffset);
-    setVisibleMonthKey(getMonthKey(nextMonthDate));
-    setSelectedDateKey(getDateKeyFromDate(new Date(nextMonthDate.getFullYear(), nextMonthDate.getMonth(), 1)));
-    handleCancelEdit();
   }
 
   function handleStartEdit(workout: Workout) {
@@ -123,8 +233,6 @@ export function WorkoutCalendar() {
       return;
     }
 
-    setSelectedDateKey(getDateKey(updatedWorkout.date));
-    setVisibleMonthKey(getMonthKey(new Date(updatedWorkout.date)));
     handleCancelEdit();
     setSyncState({
       kind: "pending",
@@ -157,8 +265,6 @@ export function WorkoutCalendar() {
         notes: originalWorkout.notes,
         title: originalWorkout.title,
       });
-      setSelectedDateKey(getDateKey(originalWorkout.date));
-      setVisibleMonthKey(getMonthKey(new Date(originalWorkout.date)));
       setSyncState({
         kind: "error",
         message: "Sync failed. Local changes were rolled back.",
@@ -168,146 +274,40 @@ export function WorkoutCalendar() {
 
   return (
     <View style={styles.content}>
-      <Card title="Sync Status">
+      <Card title="Workout Sync">
         <Text style={[styles.syncText, syncState.kind === "error" && styles.errorText]}>
           {syncState.message}
         </Text>
       </Card>
 
-      {completedWorkouts.length === 0 ? (
-        <Card title="Workout Calendar">
-          <EmptyState title="No completed workouts" message="Finish a workout to see it here." />
-        </Card>
-      ) : (
-        <>
-          <Card>
-            <View style={styles.calendarHeader}>
-              <Text style={styles.monthTitle}>
-                <Text style={styles.monthTitleStrong}>{formatMonthName(visibleMonthDate)}</Text>
-                <Text style={styles.monthTitleYear}> {formatYear(visibleMonthDate)}</Text>
-              </Text>
-
-              <View style={styles.monthNav}>
-                <Pressable
-                  accessibilityLabel="Previous month"
-                  accessibilityRole="button"
-                  onPress={() => handleMonthChange(-1)}
-                  style={({ pressed }) => [styles.monthNavButton, pressed && styles.pressed]}
-                >
-                  <Text style={styles.monthNavText}>{"<"}</Text>
-                </Pressable>
-                <Pressable
-                  accessibilityLabel="Next month"
-                  accessibilityRole="button"
-                  onPress={() => handleMonthChange(1)}
-                  style={({ pressed }) => [styles.monthNavButton, pressed && styles.pressed]}
-                >
-                  <Text style={styles.monthNavText}>{">"}</Text>
-                </Pressable>
-              </View>
-            </View>
-
-            <View style={styles.calendarSurface}>
-              <View style={styles.weekdayRow}>
-                {weekdays.map((weekday) => (
-                  <Text key={weekday} style={styles.weekdayText}>
-                    {weekday}
-                  </Text>
-                ))}
-              </View>
-
-              <View style={styles.calendarGrid}>
-                {calendarWeeks.map((week, weekIndex) => (
-                  <View key={`week-${weekIndex}`} style={styles.weekRow}>
-                    {week.map((day, dayIndex) => {
-                      const workoutsForDay = workoutsByDate.get(day.dateKey) ?? [];
-                      const isSelected = day.dateKey === selectedDateKey;
-
-                      return (
-                        <Pressable
-                          accessibilityLabel={`${formatAccessibilityDate(day.dateKey)}, ${
-                            workoutsForDay.length
-                          } completed workouts`}
-                          accessibilityRole="button"
-                          key={day.dateKey}
-                          onPress={() => {
-                            setVisibleMonthKey(getMonthKey(day.date));
-                            setSelectedDateKey(day.dateKey);
-                            handleCancelEdit();
-                          }}
-                          style={({ pressed }) => [
-                            styles.dayCell,
-                            dayIndex === week.length - 1 && styles.lastDayCell,
-                            !day.isCurrentMonth && styles.outsideMonthDayCell,
-                            isSelected && styles.selectedDayCell,
-                            pressed && styles.pressed,
-                          ]}
-                        >
-                          <View
-                            style={[
-                              styles.dayNumberBadge,
-                              isSelected && styles.selectedDayNumberBadge,
-                            ]}
-                          >
-                            <Text
-                              style={[
-                                styles.dayNumber,
-                                !day.isCurrentMonth && styles.outsideMonthDayNumber,
-                                day.isToday && styles.todayDayNumber,
-                                isSelected && styles.selectedDayText,
-                              ]}
-                            >
-                              {formatCalendarDayLabel(day)}
-                            </Text>
-                          </View>
-
-                          {workoutsForDay.length > 0 ? (
-                            <View style={styles.workoutMarker}>
-                              <View style={styles.workoutDot} />
-                              <Text style={styles.workoutMarkerText}>
-                                {workoutsForDay.length}
-                              </Text>
-                            </View>
-                          ) : null}
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                ))}
-              </View>
-            </View>
-          </Card>
-
-          <Card title={formatSelectedDate(selectedDateKey)}>
-            {selectedWorkouts.length === 0 ? (
-              <Text style={styles.mutedText}>No completed session on this date.</Text>
-            ) : (
-              <View style={styles.sessionList}>
-                {selectedWorkouts.map((workout) => (
-                  <WorkoutCalendarItem
-                    deleteCandidateId={deleteCandidateId}
-                    draftWorkout={draftWorkout}
-                    editingWorkoutId={editingWorkoutId}
-                    key={workout.id}
-                    onCancelDelete={handleCancelDelete}
-                    onCancelEdit={handleCancelEdit}
-                    onConfirmDelete={() => handleConfirmDelete(workout)}
-                    onRequestDelete={() => setDeleteCandidateId(workout.id)}
-                    onSave={() => handleSaveWorkout(workout)}
-                    onStartEdit={() => handleStartEdit(workout)}
-                    onUpdateDraftWorkout={(updater) =>
-                      setDraftWorkout((currentDraft) =>
-                        currentDraft ? updater(currentDraft) : currentDraft,
-                      )
-                    }
-                    workout={workout}
-                  />
-                ))}
-              </View>
-            )}
-          </Card>
-        </>
-      )}
+      <Card title="Workouts">
+        {selectedWorkouts.length === 0 ? (
+          <Text style={styles.mutedText}>No completed session on this date.</Text>
+        ) : (
+          <View style={styles.sessionList}>
+            {selectedWorkouts.map((workout) => (
+              <WorkoutCalendarItem
+                deleteCandidateId={deleteCandidateId}
+                draftWorkout={draftWorkout}
+                editingWorkoutId={editingWorkoutId}
+                key={workout.id}
+                onCancelDelete={handleCancelDelete}
+                onCancelEdit={handleCancelEdit}
+                onConfirmDelete={() => handleConfirmDelete(workout)}
+                onRequestDelete={() => setDeleteCandidateId(workout.id)}
+                onSave={() => handleSaveWorkout(workout)}
+                onStartEdit={() => handleStartEdit(workout)}
+                onUpdateDraftWorkout={(updater) =>
+                  setDraftWorkout((currentDraft) =>
+                    currentDraft ? updater(currentDraft) : currentDraft,
+                  )
+                }
+                workout={workout}
+              />
+            ))}
+          </View>
+        )}
+      </Card>
     </View>
   );
 }
@@ -511,15 +511,6 @@ function formatYear(date: Date) {
   return String(date.getFullYear());
 }
 
-function formatSelectedDate(dateKey: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    weekday: "long",
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  }).format(parseDateKey(dateKey));
-}
-
 function formatWorkoutTime(date: string) {
   return new Intl.DateTimeFormat("en-US", {
     hour: "numeric",
@@ -557,6 +548,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: spacing.md,
     justifyContent: "space-between",
+  },
+  calendarPanel: {
+    gap: spacing.lg,
   },
   monthTitle: {
     color: colors.text,

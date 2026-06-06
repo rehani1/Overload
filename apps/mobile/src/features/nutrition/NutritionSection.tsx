@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { isApiConfigured } from "@/api/client";
 import {
@@ -11,9 +11,7 @@ import {
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { EmptyState } from "@/components/EmptyState";
-import { Header } from "@/components/Header";
 import { Input } from "@/components/Input";
-import { Screen } from "@/components/Screen";
 import { colors } from "@/constants/colors";
 import { spacing } from "@/constants/spacing";
 import { typography } from "@/constants/typography";
@@ -51,7 +49,17 @@ type NutritionTargetFormState = {
 
 const mealTypes: MealType[] = ["breakfast", "lunch", "dinner", "snack"];
 
-export default function NutritionScreen() {
+type NutritionSectionProps = {
+  selectedDate?: string;
+  showDateControls?: boolean;
+  showIntroCard?: boolean;
+};
+
+export function NutritionSection({
+  selectedDate: selectedDateProp,
+  showDateControls = true,
+  showIntroCard = true,
+}: NutritionSectionProps) {
   const {
     addEntry,
     deleteEntry,
@@ -62,7 +70,7 @@ export default function NutritionScreen() {
     updateEntry,
     updateTarget,
   } = useNutritionStore();
-  const [selectedDate, setSelectedDate] = useState(getDateKeyFromDate(new Date()));
+  const [localSelectedDate, setLocalSelectedDate] = useState(getDateKeyFromDate(new Date()));
   const [entryDraft, setEntryDraft] = useState<NutritionEntryFormState>(
     getEmptyEntryFormState(),
   );
@@ -74,6 +82,7 @@ export default function NutritionScreen() {
       ? "Backend sync is enabled."
       : "Saved locally. Backend sync will activate when API URL is configured.",
   });
+  const selectedDate = selectedDateProp ?? localSelectedDate;
   const entriesForDate = entries.filter((entry) => entry.date === selectedDate);
   const totals = getNutritionTotals(entriesForDate);
 
@@ -253,7 +262,7 @@ export default function NutritionScreen() {
   }
 
   function handleDateChange(dayOffset: number) {
-    setSelectedDate(getDateKeyFromDate(addDays(parseDateKey(selectedDate), dayOffset)));
+    setLocalSelectedDate(getDateKeyFromDate(addDays(parseDateKey(selectedDate), dayOffset)));
     cancelEntryEdit();
   }
 
@@ -268,21 +277,22 @@ export default function NutritionScreen() {
   }
 
   return (
-    <Screen>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Header title="Nutrition" subtitle="Capture meals quickly; detailed trends belong on web." />
-
-        <Card title="Sync Status">
+    <View style={styles.content}>
+      {showIntroCard ? (
+        <Card title="Nutrition">
+          <Text style={styles.mutedText}>Capture meals quickly; detailed trends belong on web.</Text>
           <Text style={[styles.mutedText, syncState.kind === "error" && styles.errorText]}>
             {syncState.message}
           </Text>
         </Card>
+      ) : null}
 
-        {!isHydrated ? (
-          <EmptyState title="Loading nutrition" message="Preparing local nutrition history." />
-        ) : (
-          <>
-            <Card title={formatSelectedDate(selectedDate)}>
+      {!isHydrated ? (
+        <EmptyState title="Loading nutrition" message="Preparing local nutrition history." />
+      ) : (
+        <>
+          <Card title={showDateControls ? formatSelectedDate(selectedDate) : "Nutrition Summary"}>
+            {showDateControls ? (
               <View style={styles.actionRow}>
                 <Button onPress={() => handleDateChange(-1)} variant="secondary">
                   Previous Day
@@ -291,92 +301,92 @@ export default function NutritionScreen() {
                   Next Day
                 </Button>
               </View>
+            ) : null}
 
-              <View style={styles.metricGrid}>
-                <NutritionMetric
-                  label="Calories"
-                  target={target.dailyCalories}
-                  unit=""
-                  value={totals.calories}
-                />
-                <NutritionMetric
-                  label="Protein"
-                  target={target.proteinGrams}
-                  unit="g"
-                  value={totals.proteinGrams}
-                />
-                <NutritionMetric
-                  label="Carbs"
-                  target={target.carbsGrams}
-                  unit="g"
-                  value={totals.carbsGrams}
-                />
-                <NutritionMetric
-                  label="Fat"
-                  target={target.fatGrams}
-                  unit="g"
-                  value={totals.fatGrams}
-                />
-              </View>
-            </Card>
-
-            <NutritionTargetCard
-              key={target.updatedAt}
-              onSave={handleSaveTarget}
-              target={target}
-            />
-
-            <Card title="Add Food">
-              <NutritionEntryForm
-                draft={entryDraft}
-                onChange={(updates) =>
-                  setEntryDraft((currentDraft) => ({
-                    ...currentDraft,
-                    ...updates,
-                  }))
-                }
-                onSubmit={handleAddEntry}
-                submitLabel="Add Food"
+            <View style={styles.metricGrid}>
+              <NutritionMetric
+                label="Calories"
+                target={target.dailyCalories}
+                unit=""
+                value={totals.calories}
               />
-            </Card>
+              <NutritionMetric
+                label="Protein"
+                target={target.proteinGrams}
+                unit="g"
+                value={totals.proteinGrams}
+              />
+              <NutritionMetric
+                label="Carbs"
+                target={target.carbsGrams}
+                unit="g"
+                value={totals.carbsGrams}
+              />
+              <NutritionMetric
+                label="Fat"
+                target={target.fatGrams}
+                unit="g"
+                value={totals.fatGrams}
+              />
+            </View>
+          </Card>
 
-            <Card title="Meals">
-              {entriesForDate.length === 0 ? (
-                <EmptyState
-                  title="No nutrition entries"
-                  message="Add a meal or snack to capture macros for this date."
-                />
-              ) : (
-                <View style={styles.entryList}>
-                  {entriesForDate.map((entry) => (
-                    <NutritionEntryItem
-                      draft={editDraft}
-                      entry={entry}
-                      isEditing={editingEntryId === entry.id && editDraft !== null}
-                      key={entry.id}
-                      onCancelEdit={cancelEntryEdit}
-                      onDelete={() => handleDeleteEntry(entry)}
-                      onSave={() => handleSaveEntry(entry)}
-                      onStartEdit={() => startEntryEdit(entry)}
-                      onUpdateDraft={(updates) =>
-                        setEditDraft((currentDraft) =>
-                          currentDraft
-                            ? {
-                                ...currentDraft,
-                                ...updates,
-                              }
-                            : currentDraft,
-                        )
-                      }
-                    />
-                  ))}
-                </View>
-              )}
-            </Card>
-          </>
-        )}
-      </ScrollView>
-    </Screen>
+          <NutritionTargetCard
+            key={target.updatedAt}
+            onSave={handleSaveTarget}
+            target={target}
+          />
+
+          <Card title="Add Food">
+            <NutritionEntryForm
+              draft={entryDraft}
+              onChange={(updates) =>
+                setEntryDraft((currentDraft) => ({
+                  ...currentDraft,
+                  ...updates,
+                }))
+              }
+              onSubmit={handleAddEntry}
+              submitLabel="Add Food"
+            />
+          </Card>
+
+          <Card title="Meals">
+            {entriesForDate.length === 0 ? (
+              <EmptyState
+                title="No nutrition entries"
+                message="Add a meal or snack to capture macros for this date."
+              />
+            ) : (
+              <View style={styles.entryList}>
+                {entriesForDate.map((entry) => (
+                  <NutritionEntryItem
+                    draft={editDraft}
+                    entry={entry}
+                    isEditing={editingEntryId === entry.id && editDraft !== null}
+                    key={entry.id}
+                    onCancelEdit={cancelEntryEdit}
+                    onDelete={() => handleDeleteEntry(entry)}
+                    onSave={() => handleSaveEntry(entry)}
+                    onStartEdit={() => startEntryEdit(entry)}
+                    onUpdateDraft={(updates) =>
+                      setEditDraft((currentDraft) =>
+                        currentDraft
+                          ? {
+                              ...currentDraft,
+                              ...updates,
+                            }
+                          : currentDraft,
+                      )
+                    }
+                  />
+                ))}
+              </View>
+            )}
+          </Card>
+        </>
+      )}
+    </View>
   );
 }
 
@@ -816,7 +826,6 @@ function parsePositiveNumber(value: string) {
 const styles = StyleSheet.create({
   content: {
     gap: spacing.lg,
-    paddingBottom: spacing.xxl,
   },
   form: {
     gap: spacing.md,
