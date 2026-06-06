@@ -39,7 +39,7 @@ export function WorkoutCalendar() {
   });
   const visibleMonthDate = parseMonthKey(visibleMonthKey);
   const workoutsByDate = groupWorkoutsByDate(completedWorkouts);
-  const calendarDays = buildCalendarDays(visibleMonthDate);
+  const calendarWeeks = buildCalendarWeeks(visibleMonthDate);
   const selectedWorkouts = workoutsByDate.get(selectedDateKey) ?? [];
 
   function handleCancelDelete() {
@@ -180,58 +180,101 @@ export function WorkoutCalendar() {
         </Card>
       ) : (
         <>
-          <Card title={formatMonthTitle(visibleMonthDate)}>
-            <View style={styles.monthNav}>
-              <Button onPress={() => handleMonthChange(-1)} variant="secondary">
-                Previous
-              </Button>
-              <Button onPress={() => handleMonthChange(1)} variant="secondary">
-                Next
-              </Button>
+          <Card>
+            <View style={styles.calendarHeader}>
+              <Text style={styles.monthTitle}>
+                <Text style={styles.monthTitleStrong}>{formatMonthName(visibleMonthDate)}</Text>
+                <Text style={styles.monthTitleYear}> {formatYear(visibleMonthDate)}</Text>
+              </Text>
+
+              <View style={styles.monthNav}>
+                <Pressable
+                  accessibilityLabel="Previous month"
+                  accessibilityRole="button"
+                  onPress={() => handleMonthChange(-1)}
+                  style={({ pressed }) => [styles.monthNavButton, pressed && styles.pressed]}
+                >
+                  <Text style={styles.monthNavText}>{"<"}</Text>
+                </Pressable>
+                <Pressable
+                  accessibilityLabel="Next month"
+                  accessibilityRole="button"
+                  onPress={() => handleMonthChange(1)}
+                  style={({ pressed }) => [styles.monthNavButton, pressed && styles.pressed]}
+                >
+                  <Text style={styles.monthNavText}>{">"}</Text>
+                </Pressable>
+              </View>
             </View>
 
-            <View style={styles.weekdayRow}>
-              {weekdays.map((weekday) => (
-                <Text key={weekday} style={styles.weekdayText}>
-                  {weekday}
-                </Text>
-              ))}
-            </View>
+            <View style={styles.calendarSurface}>
+              <View style={styles.weekdayRow}>
+                {weekdays.map((weekday) => (
+                  <Text key={weekday} style={styles.weekdayText}>
+                    {weekday}
+                  </Text>
+                ))}
+              </View>
 
-            <View style={styles.calendarGrid}>
-              {calendarDays.map((day, index) => {
-                const workoutsForDay = day ? workoutsByDate.get(day.dateKey) ?? [] : [];
-                const isSelected = day?.dateKey === selectedDateKey;
+              <View style={styles.calendarGrid}>
+                {calendarWeeks.map((week, weekIndex) => (
+                  <View key={`week-${weekIndex}`} style={styles.weekRow}>
+                    {week.map((day, dayIndex) => {
+                      const workoutsForDay = workoutsByDate.get(day.dateKey) ?? [];
+                      const isSelected = day.dateKey === selectedDateKey;
 
-                return (
-                  <Pressable
-                    accessibilityRole={day ? "button" : undefined}
-                    disabled={!day}
-                    key={day?.dateKey ?? `blank-${index}`}
-                    onPress={() => {
-                      if (day) {
-                        setSelectedDateKey(day.dateKey);
-                        handleCancelEdit();
-                      }
-                    }}
-                    style={({ pressed }) => [
-                      styles.dayCell,
-                      !day && styles.emptyDayCell,
-                      isSelected && styles.selectedDayCell,
-                      pressed && day && styles.pressed,
-                    ]}
-                  >
-                    {day ? (
-                      <>
-                        <Text style={[styles.dayNumber, isSelected && styles.selectedDayText]}>
-                          {day.dayOfMonth}
-                        </Text>
-                        {workoutsForDay.length > 0 ? <View style={styles.workoutDot} /> : null}
-                      </>
-                    ) : null}
-                  </Pressable>
-                );
-              })}
+                      return (
+                        <Pressable
+                          accessibilityLabel={`${formatAccessibilityDate(day.dateKey)}, ${
+                            workoutsForDay.length
+                          } completed workouts`}
+                          accessibilityRole="button"
+                          key={day.dateKey}
+                          onPress={() => {
+                            setVisibleMonthKey(getMonthKey(day.date));
+                            setSelectedDateKey(day.dateKey);
+                            handleCancelEdit();
+                          }}
+                          style={({ pressed }) => [
+                            styles.dayCell,
+                            dayIndex === week.length - 1 && styles.lastDayCell,
+                            !day.isCurrentMonth && styles.outsideMonthDayCell,
+                            isSelected && styles.selectedDayCell,
+                            pressed && styles.pressed,
+                          ]}
+                        >
+                          <View
+                            style={[
+                              styles.dayNumberBadge,
+                              isSelected && styles.selectedDayNumberBadge,
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.dayNumber,
+                                !day.isCurrentMonth && styles.outsideMonthDayNumber,
+                                day.isToday && styles.todayDayNumber,
+                                isSelected && styles.selectedDayText,
+                              ]}
+                            >
+                              {formatCalendarDayLabel(day)}
+                            </Text>
+                          </View>
+
+                          {workoutsForDay.length > 0 ? (
+                            <View style={styles.workoutMarker}>
+                              <View style={styles.workoutDot} />
+                              <Text style={styles.workoutMarkerText}>
+                                {workoutsForDay.length}
+                              </Text>
+                            </View>
+                          ) : null}
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                ))}
+              </View>
             </View>
           </Card>
 
@@ -351,8 +394,12 @@ function WorkoutCalendarItem({
 }
 
 type CalendarDay = {
+  date: Date;
   dateKey: string;
   dayOfMonth: number;
+  isCurrentMonth: boolean;
+  isFirstDayOfMonth: boolean;
+  isToday: boolean;
 };
 
 const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -361,22 +408,32 @@ function addMonths(date: Date, offset: number) {
   return new Date(date.getFullYear(), date.getMonth() + offset, 1);
 }
 
-function buildCalendarDays(date: Date): (CalendarDay | null)[] {
+function addDays(date: Date, offset: number) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate() + offset, 12);
+}
+
+function buildCalendarWeeks(date: Date): CalendarDay[][] {
   const year = date.getFullYear();
   const month = date.getMonth();
   const firstDay = new Date(year, month, 1);
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const blanks = Array.from<null>({ length: firstDay.getDay() }).fill(null);
-  const days = Array.from({ length: daysInMonth }, (_, index) => {
-    const dayDate = new Date(year, month, index + 1);
+  const gridStartDate = addDays(firstDay, -firstDay.getDay());
+  const todayKey = getDateKeyFromDate(new Date());
 
-    return {
-      dateKey: getDateKeyFromDate(dayDate),
-      dayOfMonth: index + 1,
-    };
-  });
+  return Array.from({ length: 6 }, (_, weekIndex) =>
+    Array.from({ length: 7 }, (_, dayIndex) => {
+      const dayDate = addDays(gridStartDate, weekIndex * 7 + dayIndex);
+      const dateKey = getDateKeyFromDate(dayDate);
 
-  return [...blanks, ...days];
+      return {
+        date: dayDate,
+        dateKey,
+        dayOfMonth: dayDate.getDate(),
+        isCurrentMonth: dayDate.getMonth() === month,
+        isFirstDayOfMonth: dayDate.getDate() === 1,
+        isToday: dateKey === todayKey,
+      };
+    }),
+  );
 }
 
 function cloneWorkout(workout: Workout): Workout {
@@ -422,11 +479,36 @@ function getMonthKey(date: Date) {
   return `${year}-${month}`;
 }
 
-function formatMonthTitle(date: Date) {
+function formatAccessibilityDate(dateKey: string) {
   return new Intl.DateTimeFormat("en-US", {
     month: "long",
+    day: "numeric",
     year: "numeric",
+  }).format(parseDateKey(dateKey));
+}
+
+function formatCalendarDayLabel(day: CalendarDay) {
+  if (day.isFirstDayOfMonth) {
+    return `${formatMonthAbbrev(day.date)} ${day.dayOfMonth}`;
+  }
+
+  return String(day.dayOfMonth);
+}
+
+function formatMonthAbbrev(date: Date) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
   }).format(date);
+}
+
+function formatMonthName(date: Date) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "long",
+  }).format(date);
+}
+
+function formatYear(date: Date) {
+  return String(date.getFullYear());
 }
 
 function formatSelectedDate(dateKey: string) {
@@ -470,60 +552,139 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.84,
   },
+  calendarHeader: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: spacing.md,
+    justifyContent: "space-between",
+  },
+  monthTitle: {
+    color: colors.text,
+    flex: 1,
+    fontSize: typography.sizes.display,
+    lineHeight: typography.lineHeights.display,
+  },
+  monthTitleStrong: {
+    fontWeight: typography.weights.bold,
+  },
+  monthTitleYear: {
+    color: colors.textMuted,
+    fontWeight: typography.weights.regular,
+  },
   monthNav: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.md,
+    gap: spacing.sm,
+    paddingTop: spacing.xs,
   },
-  weekdayRow: {
-    flexDirection: "row",
-    gap: spacing.xs,
-  },
-  weekdayText: {
-    color: colors.textMuted,
-    fontSize: typography.sizes.caption,
-    lineHeight: typography.lineHeights.caption,
-    textAlign: "center",
-    width: 38,
-  },
-  calendarGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.xs,
-  },
-  dayCell: {
+  monthNavButton: {
     alignItems: "center",
     backgroundColor: colors.surfaceMuted,
     borderColor: colors.border,
+    borderRadius: 18,
+    borderWidth: 1,
+    height: 36,
+    justifyContent: "center",
+    width: 36,
+  },
+  monthNavText: {
+    color: colors.text,
+    fontSize: typography.sizes.subtitle,
+    fontWeight: typography.weights.semibold,
+    lineHeight: typography.lineHeights.subtitle,
+  },
+  calendarSurface: {
+    backgroundColor: colors.background,
+    borderColor: colors.border,
     borderRadius: 8,
     borderWidth: 1,
-    height: 38,
-    justifyContent: "center",
-    width: 38,
+    overflow: "hidden",
   },
-  emptyDayCell: {
-    backgroundColor: "transparent",
-    borderColor: "transparent",
+  weekdayRow: {
+    flexDirection: "row",
+    borderBottomColor: colors.border,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  weekdayText: {
+    color: colors.textMuted,
+    flex: 1,
+    fontSize: typography.sizes.body,
+    fontWeight: typography.weights.medium,
+    lineHeight: typography.lineHeights.body,
+    paddingVertical: spacing.md,
+    textAlign: "center",
+  },
+  calendarGrid: {
+    backgroundColor: colors.background,
+  },
+  weekRow: {
+    flexDirection: "row",
+  },
+  dayCell: {
+    alignItems: "flex-end",
+    backgroundColor: colors.background,
+    borderBottomColor: colors.border,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    borderRightWidth: StyleSheet.hairlineWidth,
+    flex: 1,
+    gap: spacing.xs,
+    justifyContent: "flex-start",
+    minHeight: 74,
+    paddingHorizontal: spacing.xs,
+    paddingTop: spacing.sm,
+  },
+  lastDayCell: {
+    borderRightWidth: 0,
+  },
+  outsideMonthDayCell: {
+    backgroundColor: colors.surface,
   },
   selectedDayCell: {
+    backgroundColor: colors.surfaceMuted,
+  },
+  dayNumberBadge: {
+    alignItems: "center",
+    borderRadius: 14,
+    justifyContent: "center",
+    minHeight: 28,
+    minWidth: 28,
+    paddingHorizontal: spacing.xs,
+  },
+  selectedDayNumberBadge: {
     backgroundColor: colors.primary,
-    borderColor: colors.primary,
   },
   dayNumber: {
     color: colors.text,
-    fontSize: typography.sizes.caption,
+    fontSize: typography.sizes.body,
     fontWeight: typography.weights.medium,
-    lineHeight: typography.lineHeights.caption,
+    lineHeight: typography.lineHeights.body,
+  },
+  outsideMonthDayNumber: {
+    color: "#70757D",
+  },
+  todayDayNumber: {
+    color: colors.primary,
   },
   selectedDayText: {
     color: colors.background,
+  },
+  workoutMarker: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.xs,
+    marginRight: spacing.xs,
   },
   workoutDot: {
     backgroundColor: colors.success,
     borderRadius: 3,
     height: 6,
-    marginTop: 2,
     width: 6,
+  },
+  workoutMarkerText: {
+    color: colors.textMuted,
+    fontSize: typography.sizes.caption,
+    fontWeight: typography.weights.medium,
+    lineHeight: typography.lineHeights.caption,
   },
   sessionList: {
     gap: spacing.md,
