@@ -29,7 +29,7 @@ export default function RegisterScreen() {
       lastName,
       password,
     });
-    router.replace("../home");
+    router.replace("/home");
   }
 
   return (
@@ -65,12 +65,18 @@ export default function RegisterScreen() {
             secureTextEntry
             value={password}
           />
-          <Button onPress={handleRegister}>Create Account</Button>
         </Card>
+
+        <View style={styles.actionBlock}>
+          <Button onPress={handleRegister}>Create Account</Button>
+          <Button onPress={() => router.replace("/login")} variant="secondary">
+            Back to Login
+          </Button>
+        </View>
 
         <View style={styles.footerCard}>
           <Text style={styles.footerText}>Already have a profile?</Text>
-          <Pressable accessibilityRole="button" onPress={() => router.push("../login")}>
+          <Pressable accessibilityRole="button" onPress={() => router.push("/login")}>
             <Text style={styles.linkText}>Back to login</Text>
           </Pressable>
         </View>
@@ -110,6 +116,9 @@ function createStyles(colors: AppColors) {
     color: colors.textMuted,
     fontSize: typography.sizes.body,
     lineHeight: typography.lineHeights.body,
+  },
+  actionBlock: {
+    gap: spacing.md,
   },
   footerCard: {
     alignItems: "center",

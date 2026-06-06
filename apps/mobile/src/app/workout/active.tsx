@@ -47,7 +47,16 @@ export default function ActiveWorkoutScreen() {
       addCompletedWorkout(completedWorkout);
     }
 
-    router.replace("../home");
+    router.replace("/home");
+  }
+
+  function handleBack() {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+
+    router.replace("/home");
   }
 
   if (!isHydrated || !activeWorkout) {
@@ -61,6 +70,12 @@ export default function ActiveWorkoutScreen() {
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.topAction}>
+          <Button onPress={handleBack} variant="secondary">
+            Back
+          </Button>
+        </View>
+
         <View style={styles.hero}>
           <Text style={styles.heroEyebrow}>Live session</Text>
           <Text style={styles.heroTitle}>Log the work. Keep the screen quiet.</Text>
@@ -214,6 +229,9 @@ function createStyles(colors: AppColors) {
   content: {
     gap: spacing.xl,
     paddingBottom: spacing.xxl,
+  },
+  topAction: {
+    alignItems: "flex-start",
   },
   hero: {
     backgroundColor: colors.heroBackground,

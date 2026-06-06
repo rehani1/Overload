@@ -24,6 +24,15 @@ export default function SettingsScreen() {
     router.replace("/login");
   }
 
+  function handleBack() {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+
+    router.replace("/profile");
+  }
+
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -31,8 +40,8 @@ export default function SettingsScreen() {
           title="Settings"
           subtitle="Manage app preferences, sync state, and account actions."
           action={
-            <Button onPress={() => router.replace("/profile")} variant="secondary">
-              Profile
+            <Button onPress={handleBack} variant="secondary">
+              Back
             </Button>
           }
         />

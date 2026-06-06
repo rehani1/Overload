@@ -22,7 +22,7 @@ export default function LoginScreen() {
 
   function handleLogin() {
     login({ email, password });
-    router.replace("../home");
+    router.replace("/home");
   }
 
   return (
@@ -56,12 +56,15 @@ export default function LoginScreen() {
             secureTextEntry
             value={password}
           />
-          <Button onPress={handleLogin}>Log In</Button>
         </Card>
+
+        <View style={styles.actionBlock}>
+          <Button onPress={handleLogin}>Log In</Button>
+        </View>
 
         <View style={styles.footerCard}>
           <Text style={styles.footerText}>New to Overload?</Text>
-          <Pressable accessibilityRole="button" onPress={() => router.push("../register")}>
+          <Pressable accessibilityRole="button" onPress={() => router.push("/register")}>
             <Text style={styles.linkText}>Create an account</Text>
           </Pressable>
         </View>
@@ -101,6 +104,9 @@ function createStyles(colors: AppColors) {
     color: colors.textMuted,
     fontSize: typography.sizes.body,
     lineHeight: typography.lineHeights.body,
+  },
+  actionBlock: {
+    gap: spacing.md,
   },
   footerCard: {
     alignItems: "center",
