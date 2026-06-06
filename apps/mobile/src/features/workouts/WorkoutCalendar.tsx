@@ -11,7 +11,9 @@ import { Card } from "@/components/Card";
 import { colors } from "@/constants/colors";
 import { spacing } from "@/constants/spacing";
 import { typography } from "@/constants/typography";
+import { useNutritionStore } from "@/store/useNutritionStore";
 import { useWorkoutHistoryStore } from "@/store/useWorkoutHistoryStore";
+import type { NutritionEntry } from "@/types/nutrition";
 import type { Workout } from "@/types/workout";
 
 import { WorkoutCalendarEditor } from "./WorkoutCalendarEditor";
@@ -27,12 +29,14 @@ type WorkoutCalendarProps = {
 
 export function WorkoutCalendar({ onDatePress }: WorkoutCalendarProps) {
   const { workouts } = useWorkoutHistoryStore();
+  const { entries: nutritionEntries } = useNutritionStore();
   const completedWorkouts = workouts.filter((workout) => workout.status === "completed");
   const initialDate = completedWorkouts[0]?.date ?? new Date().toISOString();
   const [selectedDateKey, setSelectedDateKey] = useState(getDateKey(initialDate));
   const [visibleMonthKey, setVisibleMonthKey] = useState(getMonthKey(new Date(initialDate)));
   const visibleMonthDate = parseMonthKey(visibleMonthKey);
   const workoutsByDate = groupWorkoutsByDate(completedWorkouts);
+  const nutritionEntriesByDate = groupNutritionEntriesByDate(nutritionEntries);
   const calendarWeeks = buildCalendarWeeks(visibleMonthDate);
 
   function handleMonthChange(monthOffset: number) {
@@ -84,13 +88,16 @@ export function WorkoutCalendar({ onDatePress }: WorkoutCalendarProps) {
               <View key={`week-${weekIndex}`} style={styles.weekRow}>
                 {week.map((day, dayIndex) => {
                   const workoutsForDay = workoutsByDate.get(day.dateKey) ?? [];
+                  const nutritionEntriesForDay = nutritionEntriesByDate.get(day.dateKey) ?? [];
                   const isSelected = day.dateKey === selectedDateKey;
+                  const dayEntrySummary = formatDayEntrySummary(
+                    workoutsForDay.length,
+                    nutritionEntriesForDay.length,
+                  );
 
                   return (
                     <Pressable
-                      accessibilityLabel={`${formatAccessibilityDate(day.dateKey)}, ${
-                        workoutsForDay.length
-                      } completed workouts`}
+                      accessibilityLabel={`${formatAccessibilityDate(day.dateKey)}, ${dayEntrySummary}`}
                       accessibilityRole="button"
                       key={day.dateKey}
                       onPress={() => {
@@ -124,10 +131,23 @@ export function WorkoutCalendar({ onDatePress }: WorkoutCalendarProps) {
                         </Text>
                       </View>
 
-                      {workoutsForDay.length > 0 ? (
-                        <View style={styles.workoutMarker}>
-                          <View style={styles.workoutDot} />
-                          <Text style={styles.workoutMarkerText}>{workoutsForDay.length}</Text>
+                      {workoutsForDay.length > 0 || nutritionEntriesForDay.length > 0 ? (
+                        <View style={styles.dayMarkers}>
+                          {workoutsForDay.length > 0 ? (
+                            <View style={styles.entryMarker}>
+                              <View style={styles.workoutDot} />
+                              <Text style={styles.entryMarkerText}>{workoutsForDay.length}</Text>
+                            </View>
+                          ) : null}
+
+                          {nutritionEntriesForDay.length > 0 ? (
+                            <View style={styles.entryMarker}>
+                              <View style={styles.nutritionDot} />
+                              <Text style={styles.entryMarkerText}>
+                                {nutritionEntriesForDay.length}
+                              </Text>
+                            </View>
+                          ) : null}
                         </View>
                       ) : null}
                     </Pressable>
@@ -452,6 +472,17 @@ function groupWorkoutsByDate(workouts: Workout[]) {
   return groupedWorkouts;
 }
 
+function groupNutritionEntriesByDate(entries: NutritionEntry[]) {
+  const groupedEntries = new Map<string, NutritionEntry[]>();
+
+  entries.forEach((entry) => {
+    const entriesForDate = groupedEntries.get(entry.date) ?? [];
+    groupedEntries.set(entry.date, [...entriesForDate, entry]);
+  });
+
+  return groupedEntries;
+}
+
 function getDateKey(date: string) {
   return getDateKeyFromDate(new Date(date));
 }
@@ -508,6 +539,20 @@ function formatWorkoutTime(date: string) {
     hour: "numeric",
     minute: "2-digit",
   }).format(new Date(date));
+}
+
+function formatDayEntrySummary(workoutCount: number, nutritionCount: number) {
+  const summaries = [];
+
+  if (workoutCount > 0) {
+    summaries.push(`${workoutCount} completed ${workoutCount === 1 ? "workout" : "workouts"}`);
+  }
+
+  if (nutritionCount > 0) {
+    summaries.push(`${nutritionCount} nutrition ${nutritionCount === 1 ? "entry" : "entries"}`);
+  }
+
+  return summaries.length > 0 ? summaries.join(", ") : "no workout or nutrition entries";
 }
 
 function parseDateKey(dateKey: string) {
@@ -654,11 +699,15 @@ const styles = StyleSheet.create({
   selectedDayText: {
     color: colors.background,
   },
-  workoutMarker: {
+  dayMarkers: {
+    alignItems: "flex-end",
+    gap: 2,
+    marginRight: spacing.xs,
+  },
+  entryMarker: {
     alignItems: "center",
     flexDirection: "row",
     gap: spacing.xs,
-    marginRight: spacing.xs,
   },
   workoutDot: {
     backgroundColor: colors.success,
@@ -666,7 +715,13 @@ const styles = StyleSheet.create({
     height: 6,
     width: 6,
   },
-  workoutMarkerText: {
+  nutritionDot: {
+    backgroundColor: colors.danger,
+    borderRadius: 3,
+    height: 6,
+    width: 6,
+  },
+  entryMarkerText: {
     color: colors.textMuted,
     fontSize: typography.sizes.caption,
     fontWeight: typography.weights.medium,
