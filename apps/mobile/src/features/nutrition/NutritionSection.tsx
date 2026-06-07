@@ -29,6 +29,7 @@ import {
   type NutritionEntryEditorState,
 } from "@/features/nutrition/NutritionEntryEditor";
 import { useNutritionStore } from "@/store/useNutritionStore";
+import { usePresetStore } from "@/store/usePresetStore";
 import { useThemeColors } from "@/theme/ThemeProvider";
 import type {
   MealType,
@@ -37,6 +38,7 @@ import type {
   NutritionTarget,
   NutritionTargetUpdate,
 } from "@/types/nutrition";
+import type { MealPreset } from "@/types/preset";
 
 type SyncState = {
   kind: "idle" | "pending" | "success" | "error";
@@ -73,6 +75,7 @@ export function NutritionSection({
     updateEntry,
     updateTarget,
   } = useNutritionStore();
+  const { addMealPreset, mealPresets } = usePresetStore();
   const colors = useThemeColors();
   const styles = createStyles(colors);
   const [localSelectedDate, setLocalSelectedDate] = useState(getDateKeyFromDate(new Date()));
@@ -134,6 +137,53 @@ export function NutritionSection({
       setSyncState({
         kind: "error",
         message: "Nutrition sync failed. Local entry was rolled back.",
+      });
+    }
+  }
+
+  async function handleQuickAddMealPreset(preset: MealPreset) {
+    const presetEntry = preset.entry;
+    const draft: NutritionEntryDraft = {
+      calories: presetEntry.calories,
+      carbsGrams: presetEntry.carbsGrams,
+      date: selectedDate,
+      fatGrams: presetEntry.fatGrams,
+      foodName: presetEntry.foodName,
+      mealType: presetEntry.mealType,
+      notes: presetEntry.notes,
+      proteinGrams: presetEntry.proteinGrams,
+      servingQuantity: presetEntry.servingQuantity,
+    };
+    const addedEntry = addEntry(draft);
+
+    cancelEntryEdit();
+    setSyncState({
+      kind: "pending",
+      message: "Meal preset added locally. Syncing entry...",
+    });
+
+    if (!isApiConfigured) {
+      setSyncState({
+        kind: "success",
+        message: "Meal preset added locally. Backend sync is not configured yet.",
+      });
+      return;
+    }
+
+    try {
+      await createNutritionEntry({
+        ...draft,
+        clientId: addedEntry.id,
+      });
+      setSyncState({
+        kind: "success",
+        message: "Meal preset synced.",
+      });
+    } catch {
+      deleteEntry(addedEntry.id);
+      setSyncState({
+        kind: "error",
+        message: "Preset sync failed. Local entry was rolled back.",
       });
     }
   }
@@ -286,6 +336,14 @@ export function NutritionSection({
     setEditDraft(getEntryFormState(entry));
   }
 
+  function handleSaveMealPreset(entry: NutritionEntry) {
+    addMealPreset(entry);
+    setSyncState({
+      kind: "success",
+      message: "Meal saved as a preset.",
+    });
+  }
+
   function cancelEntryEdit() {
     setActiveEntryModal(null);
     setEditingEntry(null);
@@ -409,6 +467,7 @@ export function NutritionSection({
                     onSave={() => {
                       void handleSaveEntry(entry);
                     }}
+                    onSavePreset={() => handleSaveMealPreset(entry)}
                     onStartEdit={() => startEntryEdit(entry)}
                   />
                 ))}
@@ -427,6 +486,10 @@ export function NutritionSection({
             }
             onClose={() => {
               setActiveEntryModal(null);
+            }}
+            mealPresets={mealPresets}
+            onQuickAdd={(preset) => {
+              void handleQuickAddMealPreset(preset);
             }}
             onSubmit={() => {
               void handleAddEntry();
@@ -590,21 +653,26 @@ function NutritionTargetModal({
 
 type NutritionEntryModalProps = {
   draft: NutritionEntryEditorState;
+  mealPresets: MealPreset[];
   mode: "add" | null;
   onChange: (updates: Partial<NutritionEntryEditorState>) => void;
   onClose: () => void;
+  onQuickAdd: (preset: MealPreset) => void;
   onSubmit: () => void;
 };
 
 function NutritionEntryModal({
   draft,
+  mealPresets,
   mode,
   onChange,
   onClose,
+  onQuickAdd,
   onSubmit,
 }: NutritionEntryModalProps) {
   const colors = useThemeColors();
   const styles = createStyles(colors);
+  const [isPresetPickerVisible, setIsPresetPickerVisible] = useState(false);
 
   return (
     <Modal
@@ -631,6 +699,35 @@ function NutritionEntryModal({
         </View>
 
         <ScrollView contentContainerStyle={styles.modalContent} showsVerticalScrollIndicator={false}>
+          <View style={styles.actionRow}>
+            <Button
+              disabled={mealPresets.length === 0}
+              icon="circle-stack"
+              onPress={() => setIsPresetPickerVisible((isVisible) => !isVisible)}
+              style={styles.compactActionButton}
+              variant="secondary"
+            >
+              Quick Add
+            </Button>
+          </View>
+          {isPresetPickerVisible ? (
+            <View style={styles.presetPicker}>
+              {mealPresets.map((preset) => (
+                <Pressable
+                  accessibilityRole="button"
+                  key={preset.id}
+                  onPress={() => {
+                    setIsPresetPickerVisible(false);
+                    onQuickAdd(preset);
+                  }}
+                  style={styles.presetOption}
+                >
+                  <Text style={styles.presetOptionTitle}>{preset.foodName}</Text>
+                  <Text style={styles.presetOptionMeta}>{preset.entry.calories} cal</Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
           <NutritionEntryEditor
             cancelLabel="Cancel"
             draft={draft}
@@ -654,6 +751,7 @@ type NutritionEntryItemProps = {
   onChange: (updates: Partial<NutritionEntryEditorState>) => void;
   onDelete: () => void;
   onSave: () => void;
+  onSavePreset: () => void;
   onStartEdit: () => void;
 };
 
@@ -666,6 +764,7 @@ function NutritionEntryItem({
   onChange,
   onDelete,
   onSave,
+  onSavePreset,
   onStartEdit,
 }: NutritionEntryItemProps) {
   const colors = useThemeColors();
@@ -706,13 +805,25 @@ function NutritionEntryItem({
       </Pressable>
 
       {isExpanded && draft ? (
-        <NutritionEntryEditor
-          draft={draft}
-          onCancel={onCancel}
-          onChange={onChange}
-          onDelete={onDelete}
-          onSave={onSave}
-        />
+        <>
+          <View style={styles.inlineActionRow}>
+            <Button
+              icon="circle-stack"
+              onPress={onSavePreset}
+              style={styles.compactActionButton}
+              variant="secondary"
+            >
+              Save Preset
+            </Button>
+          </View>
+          <NutritionEntryEditor
+            draft={draft}
+            onCancel={onCancel}
+            onChange={onChange}
+            onDelete={onDelete}
+            onSave={onSave}
+          />
+        </>
       ) : null}
     </View>
   );
@@ -1139,6 +1250,40 @@ function createStyles(colors: AppColors) {
     minHeight: 44,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
+  },
+  inlineActionRow: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+  },
+  presetPicker: {
+    backgroundColor: colors.surfaceMuted,
+    borderColor: colors.border,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: spacing.xs,
+    padding: spacing.sm,
+  },
+  presetOption: {
+    backgroundColor: colors.surfaceElevated,
+    borderColor: colors.border,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 2,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  presetOptionTitle: {
+    color: colors.text,
+    fontSize: typography.sizes.small,
+    fontWeight: typography.weights.semibold,
+    lineHeight: typography.lineHeights.small,
+  },
+  presetOptionMeta: {
+    color: colors.textMuted,
+    fontSize: typography.sizes.caption,
+    lineHeight: typography.lineHeights.caption,
   },
   });
 }

@@ -1,4 +1,6 @@
+import { useState } from "react";
 import {
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -12,7 +14,9 @@ import { Button } from "@/components/Button";
 import type { AppColors } from "@/constants/colors";
 import { spacing } from "@/constants/spacing";
 import { typography } from "@/constants/typography";
+import { usePresetStore } from "@/store/usePresetStore";
 import { useThemeColors } from "@/theme/ThemeProvider";
+import type { WorkoutPreset } from "@/types/preset";
 import type { UnitPreference } from "@/types/user";
 import type { Workout, WorkoutExercise, WorkoutSet } from "@/types/workout";
 
@@ -49,9 +53,11 @@ export function WorkoutEditor({
   unitPreference = "lb",
   workout,
 }: WorkoutEditorProps) {
+  const { workoutPresets } = usePresetStore();
   const styles = createStyles(useThemeColors());
   const canDelete = Boolean(onRequestDelete && onConfirmDelete);
   const handleCancelDelete = onCancelDelete ?? onCancel;
+  const [isPresetPickerVisible, setIsPresetPickerVisible] = useState(false);
 
   function updateWorkout(updates: Partial<Workout>) {
     onUpdateWorkout((currentWorkout) => ({
@@ -98,6 +104,21 @@ export function WorkoutEditor({
         },
       ],
     }));
+  }
+
+  function addWorkoutPreset(preset: WorkoutPreset) {
+    onUpdateWorkout((currentWorkout) => ({
+      ...currentWorkout,
+      exercises: [
+        ...currentWorkout.exercises,
+        ...clonePresetExercises(preset),
+      ],
+      title:
+        currentWorkout.exercises.length === 0 && currentWorkout.title.trim() === "Workout"
+          ? preset.title
+          : currentWorkout.title,
+    }));
+    setIsPresetPickerVisible(false);
   }
 
   function updateExerciseDetails(
@@ -198,7 +219,34 @@ export function WorkoutEditor({
         <Button icon="plus" onPress={addExercise} style={styles.compactButton} variant="secondary">
           Add Exercise
         </Button>
+        <Button
+          disabled={workoutPresets.length === 0}
+          icon="circle-stack"
+          onPress={() => setIsPresetPickerVisible((isVisible) => !isVisible)}
+          style={styles.compactButton}
+          variant="secondary"
+        >
+          Quick Add
+        </Button>
       </View>
+
+      {isPresetPickerVisible ? (
+        <View style={styles.presetPicker}>
+          {workoutPresets.map((preset) => (
+            <Pressable
+              accessibilityRole="button"
+              key={preset.id}
+              onPress={() => addWorkoutPreset(preset)}
+              style={styles.presetOption}
+            >
+              <Text style={styles.presetOptionTitle}>{preset.title}</Text>
+              <Text style={styles.presetOptionMeta}>
+                {preset.workout.exercises.length} exercises
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
 
       {workout.exercises.length === 0 ? (
         <View style={styles.emptyBox}>
@@ -376,6 +424,24 @@ function SetEditorRow({ onRemove, onUpdate, set }: SetEditorRowProps) {
       </Button>
     </View>
   );
+}
+
+function clonePresetExercises(preset: WorkoutPreset): WorkoutExercise[] {
+  return preset.workout.exercises.map((workoutExercise) => ({
+    ...workoutExercise,
+    exercise: {
+      ...workoutExercise.exercise,
+      id: createId("exercise"),
+      isCustom: true,
+    },
+    id: createId("workout-exercise"),
+    sets: workoutExercise.sets.map((set, index) => ({
+      ...set,
+      id: createId("set"),
+      setNumber: index + 1,
+      weightUnit: set.weightUnit ?? "lb",
+    })),
+  }));
 }
 
 type CompactTextInputProps = {
@@ -641,6 +707,34 @@ function createStyles(colors: AppColors) {
       fontSize: typography.sizes.body,
       fontWeight: typography.weights.semibold,
       lineHeight: typography.lineHeights.body,
+    },
+    presetPicker: {
+      backgroundColor: colors.surfaceMuted,
+      borderColor: colors.border,
+      borderRadius: 16,
+      borderWidth: 1,
+      gap: spacing.xs,
+      padding: spacing.sm,
+    },
+    presetOption: {
+      backgroundColor: colors.surfaceElevated,
+      borderColor: colors.border,
+      borderRadius: 12,
+      borderWidth: 1,
+      gap: 2,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+    },
+    presetOptionTitle: {
+      color: colors.text,
+      fontSize: typography.sizes.small,
+      fontWeight: typography.weights.semibold,
+      lineHeight: typography.lineHeights.small,
+    },
+    presetOptionMeta: {
+      color: colors.textMuted,
+      fontSize: typography.sizes.caption,
+      lineHeight: typography.lineHeights.caption,
     },
   });
 }

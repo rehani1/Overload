@@ -23,6 +23,7 @@ import { spacing } from "@/constants/spacing";
 import { typography } from "@/constants/typography";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useNutritionStore } from "@/store/useNutritionStore";
+import { usePresetStore } from "@/store/usePresetStore";
 import { useWorkoutHistoryStore } from "@/store/useWorkoutHistoryStore";
 import { useThemeColors } from "@/theme/ThemeProvider";
 import type { NutritionEntry } from "@/types/nutrition";
@@ -288,6 +289,7 @@ export function WorkoutDateDetails({
   selectedDateKey,
 }: WorkoutDateDetailsProps) {
   const { user } = useAuthStore();
+  const { addWorkoutPreset } = usePresetStore();
   const {
     addCompletedWorkout,
     deleteWorkout,
@@ -367,6 +369,14 @@ export function WorkoutDateDetails({
 
   function handleUpdateDraftWorkout(updater: (workout: Workout) => Workout) {
     setDraftWorkout((currentDraft) => (currentDraft ? updater(currentDraft) : currentDraft));
+  }
+
+  function handleSavePreset(workout: Workout) {
+    addWorkoutPreset(workout);
+    setSyncState({
+      kind: "success",
+      message: "Workout saved as a preset.",
+    });
   }
 
   async function handleCreateWorkout() {
@@ -515,6 +525,7 @@ export function WorkoutDateDetails({
                 onSave={() => {
                   void handleSaveWorkout(workout);
                 }}
+                onSavePreset={() => handleSavePreset(workout)}
                 onStartEdit={() => handleStartEdit(workout)}
                 onUpdateDraftWorkout={handleUpdateDraftWorkout}
                 unitPreference={unitPreference}
@@ -576,6 +587,7 @@ type WorkoutCalendarItemProps = {
   onConfirmDelete: () => void;
   onRequestDelete: () => void;
   onSave: () => void;
+  onSavePreset: () => void;
   onStartEdit: () => void;
   onUpdateDraftWorkout: (updater: (workout: Workout) => Workout) => void;
   unitPreference: UnitPreference;
@@ -592,6 +604,7 @@ function WorkoutCalendarItem({
   onConfirmDelete,
   onRequestDelete,
   onSave,
+  onSavePreset,
   onStartEdit,
   onUpdateDraftWorkout,
   unitPreference,
@@ -628,17 +641,29 @@ function WorkoutCalendarItem({
       </Pressable>
 
       {isExpanded && draftWorkout ? (
-        <WorkoutEditor
-          isDeletePending={isDeletePending}
-          onCancel={onCancelEdit}
-          onCancelDelete={onCancelDelete}
-          onConfirmDelete={onConfirmDelete}
-          onRequestDelete={onRequestDelete}
-          onSave={onSave}
-          onUpdateWorkout={onUpdateDraftWorkout}
-          unitPreference={unitPreference}
-          workout={draftWorkout}
-        />
+        <>
+          <View style={styles.inlineActionRow}>
+            <Button
+              icon="circle-stack"
+              onPress={onSavePreset}
+              style={styles.compactActionButton}
+              variant="secondary"
+            >
+              Save Preset
+            </Button>
+          </View>
+          <WorkoutEditor
+            isDeletePending={isDeletePending}
+            onCancel={onCancelEdit}
+            onCancelDelete={onCancelDelete}
+            onConfirmDelete={onConfirmDelete}
+            onRequestDelete={onRequestDelete}
+            onSave={onSave}
+            onUpdateWorkout={onUpdateDraftWorkout}
+            unitPreference={unitPreference}
+            workout={draftWorkout}
+          />
+        </>
       ) : null}
     </View>
   );
@@ -1222,6 +1247,12 @@ function createStyles(colors: AppColors) {
     minHeight: 44,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
+  },
+  inlineActionRow: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
   },
   emptyInline: {
     backgroundColor: colors.surfaceMuted,
