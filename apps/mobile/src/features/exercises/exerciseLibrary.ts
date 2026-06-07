@@ -1,6 +1,6 @@
 import type { Exercise } from "@/types/exercise";
 
-export const mockExercises: Exercise[] = [
+export const exerciseLibrary: Exercise[] = [
   {
     id: "exercise-bench-press",
     name: "Bench Press",

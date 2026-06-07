@@ -1,10 +1,16 @@
 import { useSyncExternalStore } from "react";
 
-import { mockWorkouts } from "@/features/workouts/mockWorkouts";
-import { loadStoredJson, saveStoredJson } from "@/lib/storage";
+import { loadAccountScopedJson, saveAccountScopedJson } from "@/lib/accountStorage";
 import type { Workout } from "@/types/workout";
+import { createId } from "@/utils/id";
+import { normalizeWorkoutSetUnits } from "@/utils/workout";
 
 const WORKOUT_HISTORY_STORAGE_KEY = "overload.workoutHistory.v1";
+const REMOVED_SEED_WORKOUT_IDS = new Set([
+  "workout-upper-strength-1",
+  "workout-lower-volume-1",
+  "workout-push-pull-1",
+]);
 
 type WorkoutHistoryState = {
   isHydrated: boolean;
@@ -24,14 +30,12 @@ type WorkoutHistoryUpdate = Partial<Pick<Workout, "date" | "exercises" | "notes"
 
 let state: WorkoutHistoryState = {
   isHydrated: false,
-  workouts: mockWorkouts.map(normalizeWorkout),
+  workouts: [],
 };
+let activeAccountId: string | null = null;
+let activeAccountVersion = 0;
 
 const listeners = new Set<() => void>();
-
-function createId(prefix: string) {
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
 
 function emit(nextState: WorkoutHistoryState) {
   state = nextState;
@@ -39,6 +43,7 @@ function emit(nextState: WorkoutHistoryState) {
 }
 
 function emitAndPersist(nextState: WorkoutHistoryState) {
+  activeAccountVersion += 1;
   emit(nextState);
   void saveWorkoutHistoryState(nextState);
 }
@@ -137,35 +142,71 @@ function getWorkoutById(workoutId: string) {
   return state.workouts.find((workout) => workout.id === workoutId);
 }
 
-async function hydrateWorkoutHistoryState() {
-  const storedState = await loadStoredJson<WorkoutHistoryState>(WORKOUT_HISTORY_STORAGE_KEY);
+export function setWorkoutHistoryStoreAccount(accountId: string | null) {
+  if (activeAccountId === accountId && state.isHydrated) {
+    return;
+  }
 
-  emit({
+  activeAccountId = accountId;
+  activeAccountVersion += 1;
+
+  if (!accountId) {
+    emit(createEmptyWorkoutHistoryState(true));
+    return;
+  }
+
+  emit(createEmptyWorkoutHistoryState(false));
+  void hydrateWorkoutHistoryState(accountId, activeAccountVersion);
+}
+
+async function hydrateWorkoutHistoryState(accountId: string, accountVersion: number) {
+  const storedState = await loadAccountScopedJson<WorkoutHistoryState>(
+    WORKOUT_HISTORY_STORAGE_KEY,
+    accountId,
+  );
+  const nextState: WorkoutHistoryState = {
     isHydrated: true,
-    workouts: (storedState?.workouts ?? mockWorkouts).map(normalizeWorkout),
-  });
+    workouts: normalizeStoredWorkouts(storedState?.workouts),
+  };
+
+  if (activeAccountId !== accountId || activeAccountVersion !== accountVersion) {
+    return;
+  }
+
+  emit(nextState);
+  void saveWorkoutHistoryStateForAccount(accountId, nextState);
 }
 
 async function saveWorkoutHistoryState(nextState: WorkoutHistoryState) {
-  await saveStoredJson<WorkoutHistoryState>(WORKOUT_HISTORY_STORAGE_KEY, {
+  const accountId = activeAccountId;
+
+  if (!accountId) {
+    return;
+  }
+
+  await saveWorkoutHistoryStateForAccount(accountId, nextState);
+}
+
+async function saveWorkoutHistoryStateForAccount(
+  accountId: string,
+  nextState: WorkoutHistoryState,
+) {
+  await saveAccountScopedJson<WorkoutHistoryState>(WORKOUT_HISTORY_STORAGE_KEY, accountId, {
     isHydrated: true,
     workouts: nextState.workouts,
   });
 }
 
-void hydrateWorkoutHistoryState();
-
 function normalizeWorkout(workout: Workout): Workout {
-  return {
-    ...workout,
-    exercises: workout.exercises.map((workoutExercise) => ({
-      ...workoutExercise,
-      sets: workoutExercise.sets.map((set) => ({
-        ...set,
-        weightUnit: set.weightUnit ?? "lb",
-      })),
-    })),
-  };
+  return normalizeWorkoutSetUnits(workout);
+}
+
+function normalizeStoredWorkouts(workouts: Workout[] | undefined) {
+  return (workouts ?? []).filter(isUserWorkout).map(normalizeWorkout);
+}
+
+function isUserWorkout(workout: Workout) {
+  return !REMOVED_SEED_WORKOUT_IDS.has(workout.id);
 }
 
 function buildStore(snapshot: WorkoutHistoryState): WorkoutHistoryStore {
@@ -177,6 +218,13 @@ function buildStore(snapshot: WorkoutHistoryState): WorkoutHistoryStore {
     getWorkoutById,
     restoreWorkout,
     updateWorkout,
+  };
+}
+
+function createEmptyWorkoutHistoryState(isHydrated: boolean): WorkoutHistoryState {
+  return {
+    isHydrated,
+    workouts: [],
   };
 }
 

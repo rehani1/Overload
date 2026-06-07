@@ -1,13 +1,10 @@
 import { useState } from "react";
 import {
-  Modal,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 import { isApiConfigured } from "@/api/client";
 import {
@@ -17,7 +14,9 @@ import {
 } from "@/api/workoutApi";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
+import { EmptyState } from "@/components/EmptyState";
 import { Icon } from "@/components/Icon";
+import { ModalShell } from "@/components/ModalShell";
 import type { AppColors } from "@/constants/colors";
 import { spacing } from "@/constants/spacing";
 import { typography } from "@/constants/typography";
@@ -29,6 +28,14 @@ import { useThemeColors } from "@/theme/ThemeProvider";
 import type { NutritionEntry } from "@/types/nutrition";
 import type { UnitPreference } from "@/types/user";
 import type { Workout } from "@/types/workout";
+import {
+  addDays,
+  buildDateTimeFromDateKey,
+  formatDateKey,
+  parseDateKey,
+} from "@/utils/date";
+import { createId } from "@/utils/id";
+import { cloneWorkout } from "@/utils/workout";
 
 import { WorkoutEditor } from "./WorkoutEditor";
 
@@ -48,7 +55,7 @@ export function WorkoutCalendar({ onDatePress }: WorkoutCalendarProps) {
   const styles = createStyles(colors);
   const completedWorkouts = workouts.filter((workout) => workout.status === "completed");
   const today = new Date();
-  const todayDateKey = getDateKeyFromDate(today);
+  const todayDateKey = formatDateKey(today);
   const [isMonthExpanded, setIsMonthExpanded] = useState(false);
   const [selectedDateKey, setSelectedDateKey] = useState(todayDateKey);
   const [visibleMonthKey, setVisibleMonthKey] = useState(getMonthKey(today));
@@ -69,7 +76,7 @@ export function WorkoutCalendar({ onDatePress }: WorkoutCalendarProps) {
   function handleMonthChange(monthOffset: number) {
     const nextMonthDate = addMonths(visibleMonthDate, monthOffset);
     setVisibleMonthKey(getMonthKey(nextMonthDate));
-    setSelectedDateKey(getDateKeyFromDate(new Date(nextMonthDate.getFullYear(), nextMonthDate.getMonth(), 1)));
+    setSelectedDateKey(formatDateKey(new Date(nextMonthDate.getFullYear(), nextMonthDate.getMonth(), 1)));
   }
 
   function handleShowMonth() {
@@ -289,10 +296,14 @@ export function WorkoutDateDetails({
   selectedDateKey,
 }: WorkoutDateDetailsProps) {
   const { user } = useAuthStore();
-  const { addWorkoutPreset } = usePresetStore();
+  const {
+    addWorkoutPreset,
+    isHydrated: arePresetsHydrated,
+  } = usePresetStore();
   const {
     addCompletedWorkout,
     deleteWorkout,
+    isHydrated: isWorkoutHistoryHydrated,
     restoreWorkout,
     updateWorkout,
     workouts,
@@ -312,6 +323,7 @@ export function WorkoutDateDetails({
   const workoutsByDate = groupWorkoutsByDate(completedWorkouts);
   const selectedWorkouts = workoutsByDate.get(selectedDateKey) ?? [];
   const unitPreference = user?.unitPreference ?? "lb";
+  const isReady = arePresetsHydrated && isWorkoutHistoryHydrated;
 
   function handleCancelEdit() {
     setEditingWorkout(null);
@@ -489,6 +501,16 @@ export function WorkoutDateDetails({
     }
   }
 
+  if (!isReady) {
+    return (
+      <View style={[styles.content, isCompact && styles.compactDetailsContent]}>
+        <Card title="Workout" style={isCompact && styles.compactDetailsCard}>
+          <EmptyState title="Loading workouts" message="Preparing local workout history." />
+        </Card>
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.content, isCompact && styles.compactDetailsContent]}>
       <Card title="Workout" style={isCompact && styles.compactDetailsCard}>
@@ -536,43 +558,24 @@ export function WorkoutDateDetails({
         )}
       </Card>
 
-      <Modal
-        animationType="slide"
-        onRequestClose={handleCancelEdit}
-        presentationStyle="pageSheet"
+      <ModalShell
+        closeAccessibilityLabel="Close workout editor"
+        eyebrow="Workout"
+        onClose={handleCancelEdit}
+        title="Add Workout"
         visible={draftWorkout !== null && editingWorkout === null}
       >
-        <SafeAreaView edges={["top"]} style={styles.modalScreen}>
-          <View style={styles.modalHeader}>
-            <View style={styles.modalTitleGroup}>
-              <Text style={styles.modalEyebrow}>Workout</Text>
-              <Text numberOfLines={2} style={styles.modalTitle}>Add Workout</Text>
-            </View>
-            <Pressable
-              accessibilityLabel="Close workout editor"
-              accessibilityRole="button"
-              hitSlop={8}
-              onPress={handleCancelEdit}
-              style={styles.closeButton}
-            >
-              <Icon color={colors.text} name="x-mark" size={20} />
-            </Pressable>
-          </View>
-
-          <ScrollView contentContainerStyle={styles.modalContent} showsVerticalScrollIndicator={false}>
-            {draftWorkout ? (
-              <WorkoutEditor
-                onCancel={handleCancelEdit}
-                onSave={handleCreateWorkout}
-                onUpdateWorkout={handleUpdateDraftWorkout}
-                saveLabel="Create Workout"
-                unitPreference={unitPreference}
-                workout={draftWorkout}
-              />
-            ) : null}
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
+        {draftWorkout ? (
+          <WorkoutEditor
+            onCancel={handleCancelEdit}
+            onSave={handleCreateWorkout}
+            onUpdateWorkout={handleUpdateDraftWorkout}
+            saveLabel="Create Workout"
+            unitPreference={unitPreference}
+            workout={draftWorkout}
+          />
+        ) : null}
+      </ModalShell>
     </View>
   );
 }
@@ -693,21 +696,17 @@ function addMonths(date: Date, offset: number) {
   return new Date(date.getFullYear(), date.getMonth() + offset, 1);
 }
 
-function addDays(date: Date, offset: number) {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate() + offset, 12);
-}
-
 function buildCalendarWeeks(date: Date): CalendarDay[][] {
   const year = date.getFullYear();
   const month = date.getMonth();
   const firstDay = new Date(year, month, 1);
   const gridStartDate = addDays(firstDay, -firstDay.getDay());
-  const todayKey = getDateKeyFromDate(new Date());
+  const todayKey = formatDateKey(new Date());
 
   return Array.from({ length: 6 }, (_, weekIndex) =>
     Array.from({ length: 7 }, (_, dayIndex) => {
       const dayDate = addDays(gridStartDate, weekIndex * 7 + dayIndex);
-      const dateKey = getDateKeyFromDate(dayDate);
+      const dateKey = formatDateKey(dayDate);
 
       return {
         date: dayDate,
@@ -724,12 +723,12 @@ function buildCalendarWeeks(date: Date): CalendarDay[][] {
 function buildCompactWeekDays(date: Date): CalendarDay[] {
   const weekStartOffset = date.getDay() === 0 ? -6 : 1 - date.getDay();
   const weekStartDate = addDays(date, weekStartOffset);
-  const todayKey = getDateKeyFromDate(new Date());
+  const todayKey = formatDateKey(new Date());
   const currentMonth = date.getMonth();
 
   return Array.from({ length: 7 }, (_, dayIndex) => {
     const dayDate = addDays(weekStartDate, dayIndex);
-    const dateKey = getDateKeyFromDate(dayDate);
+    const dateKey = formatDateKey(dayDate);
 
     return {
       date: dayDate,
@@ -742,30 +741,14 @@ function buildCompactWeekDays(date: Date): CalendarDay[] {
   });
 }
 
-function cloneWorkout(workout: Workout): Workout {
-  return {
-    ...workout,
-    exercises: workout.exercises.map((workoutExercise) => ({
-      ...workoutExercise,
-      sets: workoutExercise.sets.map((set) => ({
-        ...set,
-      })),
-    })),
-  };
-}
-
 function createEmptyWorkout(dateKey: string): Workout {
   return {
-    date: buildDateTime(dateKey, 12, 0),
+    date: buildDateTimeFromDateKey(dateKey, 12, 0),
     exercises: [],
     id: createId("workout"),
     status: "completed",
     title: "Workout",
   };
-}
-
-function createId(prefix: string) {
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 function groupWorkoutsByDate(workouts: Workout[]) {
@@ -792,21 +775,7 @@ function groupNutritionEntriesByDate(entries: NutritionEntry[]) {
 }
 
 function getDateKey(date: string) {
-  return getDateKeyFromDate(new Date(date));
-}
-
-function buildDateTime(dateKey: string, hours: number, minutes: number) {
-  const [year, month, day] = dateKey.split("-").map(Number);
-
-  return new Date(year, month - 1, day, hours, minutes).toISOString();
-}
-
-function getDateKeyFromDate(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-
-  return `${year}-${month}-${day}`;
+  return formatDateKey(new Date(date));
 }
 
 function getMonthKey(date: Date) {
@@ -867,11 +836,6 @@ function formatDayEntrySummary(workoutCount: number, nutritionCount: number) {
   }
 
   return summaries.length > 0 ? summaries.join(", ") : "no workout or nutrition entries";
-}
-
-function parseDateKey(dateKey: string) {
-  const [year, month, day] = dateKey.split("-").map(Number);
-  return new Date(year, month - 1, day, 12);
 }
 
 function parseMonthKey(monthKey: string) {
@@ -1155,56 +1119,6 @@ function createStyles(colors: AppColors) {
     gap: 2,
     minHeight: 18,
     paddingHorizontal: 3,
-  },
-  modalScreen: {
-    backgroundColor: colors.background,
-    flex: 1,
-  },
-  modalHeader: {
-    alignItems: "center",
-    borderBottomColor: colors.border,
-    borderBottomWidth: 1,
-    flexDirection: "row",
-    gap: spacing.md,
-    justifyContent: "space-between",
-    paddingBottom: spacing.md,
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.md,
-  },
-  modalTitleGroup: {
-    flex: 1,
-    gap: 2,
-    minWidth: 0,
-  },
-  modalEyebrow: {
-    color: colors.textMuted,
-    fontSize: typography.sizes.caption,
-    fontWeight: typography.weights.semibold,
-    letterSpacing: 0.8,
-    lineHeight: typography.lineHeights.caption,
-    textTransform: "uppercase",
-  },
-  modalTitle: {
-    color: colors.text,
-    fontSize: 22,
-    fontWeight: typography.weights.bold,
-    lineHeight: 28,
-  },
-  modalContent: {
-    gap: spacing.lg,
-    paddingHorizontal: spacing.xl,
-    paddingBottom: spacing.xxxl,
-    paddingTop: spacing.lg,
-  },
-  closeButton: {
-    alignItems: "center",
-    backgroundColor: colors.surfaceElevated,
-    borderColor: colors.border,
-    borderRadius: 999,
-    borderWidth: 1,
-    height: 44,
-    justifyContent: "center",
-    width: 44,
   },
   sessionList: {
     gap: spacing.md,

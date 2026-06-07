@@ -45,7 +45,7 @@ function createStyles(colors: AppColors) {
     color: colors.text,
     fontSize: typography.sizes.display,
     fontWeight: typography.weights.bold,
-    letterSpacing: -0.5,
+    letterSpacing: 0,
     lineHeight: typography.lineHeights.display,
   },
   subtitle: {

@@ -1,4 +1,5 @@
 export type UnitPreference = "lb" | "kg";
+export type Sex = "female" | "male";
 
 export type User = {
   id: string;
@@ -6,5 +7,8 @@ export type User = {
   firstName: string;
   lastName: string;
   goal: string;
+  heightInches: number;
+  sex: Sex;
   unitPreference: UnitPreference;
+  weightPounds: number;
 };

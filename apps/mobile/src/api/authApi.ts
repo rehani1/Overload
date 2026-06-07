@@ -1,3 +1,4 @@
+import { apiRequest } from "@/api/client";
 import type { User } from "@/types/user";
 
 export type AuthResponse = {
@@ -17,16 +18,21 @@ export type RegisterRequest = LoginRequest & {
 };
 
 export async function login(_request: LoginRequest): Promise<AuthResponse> {
-  // TODO: Call POST /auth/login when the Spring Boot API exists.
-  throw new Error("login is not implemented yet");
+  return apiRequest<AuthResponse>("/auth/login", {
+    body: _request,
+    method: "POST",
+  });
 }
 
 export async function register(_request: RegisterRequest): Promise<AuthResponse> {
-  // TODO: Call POST /auth/register when the Spring Boot API exists.
-  throw new Error("register is not implemented yet");
+  return apiRequest<AuthResponse>("/auth/register", {
+    body: _request,
+    method: "POST",
+  });
 }
 
 export async function logout(): Promise<void> {
-  // TODO: Call POST /auth/logout and clear stored tokens when real auth is implemented.
-  throw new Error("logout is not implemented yet");
+  await apiRequest<void>("/auth/logout", {
+    method: "POST",
+  });
 }

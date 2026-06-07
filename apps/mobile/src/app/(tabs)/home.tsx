@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { router } from "expo-router";
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle } from "react-native-svg";
 
 import { Button } from "@/components/Button";
-import { Icon } from "@/components/Icon";
+import { ModalShell } from "@/components/ModalShell";
 import { Screen } from "@/components/Screen";
 import type { AppColors } from "@/constants/colors";
 import { spacing } from "@/constants/spacing";
@@ -14,7 +14,11 @@ import { NutritionSection } from "@/features/nutrition/NutritionSection";
 import { WorkoutCalendar, WorkoutDateDetails } from "@/features/workouts/WorkoutCalendar";
 import { useNutritionStore } from "@/store/useNutritionStore";
 import { useThemeColors } from "@/theme/ThemeProvider";
-import type { NutritionEntry } from "@/types/nutrition";
+import { formatDateKey, parseDateKey } from "@/utils/date";
+import {
+  formatRoundedNumber,
+  getNutritionTotals,
+} from "@/utils/nutrition";
 
 export default function HomeScreen() {
   const colors = useThemeColors();
@@ -44,11 +48,12 @@ export default function HomeScreen() {
 }
 
 function TodayNutritionDashboard() {
-  const { entries, target } = useNutritionStore();
+  const { entries, getTargetForDate } = useNutritionStore();
   const colors = useThemeColors();
   const styles = createStyles(colors);
-  const todayKey = getDateKeyFromDate(new Date());
+  const todayKey = formatDateKey(new Date());
   const totals = getNutritionTotals(entries.filter((entry) => entry.date === todayKey));
+  const target = getTargetForDate(todayKey);
   const remainingCalories = Math.max(target.dailyCalories - totals.calories, 0);
   const calorieProgress = getProgressRatio(totals.calories, target.dailyCalories);
   const ringSize = 132;
@@ -107,7 +112,7 @@ function TodayNutritionDashboard() {
           </Svg>
 
           <View style={styles.calorieRingCenter}>
-            <Text style={styles.remainingValue}>{formatNumber(remainingCalories)}</Text>
+            <Text style={styles.remainingValue}>{formatRoundedNumber(remainingCalories)}</Text>
             <Text style={styles.remainingLabel}>cal left</Text>
           </View>
         </View>
@@ -115,7 +120,7 @@ function TodayNutritionDashboard() {
         <View style={styles.calorieCopy}>
           <Text style={styles.calorieTitle}>Calories</Text>
           <Text style={styles.calorieMeta}>
-            {formatNumber(totals.calories)} of {formatNumber(target.dailyCalories)} cal
+            {formatRoundedNumber(totals.calories)} of {formatRoundedNumber(target.dailyCalories)} cal
           </Text>
         </View>
       </View>
@@ -136,7 +141,7 @@ function TodayNutritionDashboard() {
               />
             </View>
             <Text style={styles.macroValue}>
-              {formatNumber(macro.current)}/{formatNumber(macro.target)}g
+              {formatRoundedNumber(macro.current)}/{formatRoundedNumber(macro.target)}g
             </Text>
           </View>
         ))}
@@ -152,76 +157,45 @@ type DateDetailsModalProps = {
 
 function DateDetailsModal({ onClose, selectedDateKey }: DateDetailsModalProps) {
   const insets = useSafeAreaInsets();
-  const colors = useThemeColors();
-  const styles = createStyles(colors);
   const headerTopPadding = Math.max(insets.top, 58) + spacing.lg;
 
   return (
-    <Modal
-      animationType="slide"
-      onRequestClose={onClose}
+    <ModalShell
+      closeAccessibilityLabel="Close selected date"
+      headerStyle={{ paddingTop: headerTopPadding }}
+      onClose={onClose}
       presentationStyle="fullScreen"
+      safeAreaEdges={[]}
+      title={selectedDateKey ? formatDateTitle(selectedDateKey) : ""}
       visible={selectedDateKey !== null}
     >
-      <View style={styles.modalScreen}>
-        <View style={[styles.modalHeader, { paddingTop: headerTopPadding }]}>
-          <View style={styles.modalTitleGroup}>
-            <Text numberOfLines={2} style={styles.modalTitle}>
-              {selectedDateKey ? formatDateTitle(selectedDateKey) : ""}
-            </Text>
-          </View>
-
-          <Pressable
-            accessibilityLabel="Close selected date"
-            accessibilityRole="button"
-            hitSlop={8}
-            onPress={onClose}
-            style={styles.closeButton}
-          >
-            <Icon color={colors.text} name="x-mark" size={20} />
-          </Pressable>
-        </View>
-
-        <ScrollView contentContainerStyle={styles.modalContent} showsVerticalScrollIndicator={false}>
-          {selectedDateKey ? (
-            <>
-              <WorkoutDateDetails
-                isCompact
-                key={`workouts-${selectedDateKey}`}
-                selectedDateKey={selectedDateKey}
-              />
-              <NutritionSection
-                isCompact
-                key={`nutrition-${selectedDateKey}`}
-                selectedDate={selectedDateKey}
-                showDateControls={false}
-                showIntroCard={false}
-              />
-            </>
-          ) : null}
-        </ScrollView>
-      </View>
-    </Modal>
+      {selectedDateKey ? (
+        <>
+          <WorkoutDateDetails
+            isCompact
+            key={`workouts-${selectedDateKey}`}
+            selectedDateKey={selectedDateKey}
+          />
+          <NutritionSection
+            isCompact
+            key={`nutrition-${selectedDateKey}`}
+            selectedDate={selectedDateKey}
+            showDateControls={false}
+            showIntroCard={false}
+          />
+        </>
+      ) : null}
+    </ModalShell>
   );
 }
 
 function formatDateTitle(dateKey: string) {
-  const [year, month, day] = dateKey.split("-").map(Number);
-
   return new Intl.DateTimeFormat("en-US", {
     weekday: "long",
     month: "long",
     day: "numeric",
     year: "numeric",
-  }).format(new Date(year, month - 1, day, 12));
-}
-
-function getDateKeyFromDate(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-
-  return `${year}-${month}-${day}`;
+  }).format(parseDateKey(dateKey));
 }
 
 function getProgressRatio(current: number, target: number) {
@@ -230,27 +204,6 @@ function getProgressRatio(current: number, target: number) {
   }
 
   return Math.min(Math.max(current / target, 0), 1);
-}
-
-function formatNumber(value: number) {
-  return Math.round(value).toLocaleString("en-US");
-}
-
-function getNutritionTotals(entries: NutritionEntry[]) {
-  return entries.reduce(
-    (dailyTotals, entry) => ({
-      calories: dailyTotals.calories + entry.calories,
-      carbsGrams: dailyTotals.carbsGrams + entry.carbsGrams,
-      fatGrams: dailyTotals.fatGrams + entry.fatGrams,
-      proteinGrams: dailyTotals.proteinGrams + entry.proteinGrams,
-    }),
-    {
-      calories: 0,
-      carbsGrams: 0,
-      fatGrams: 0,
-      proteinGrams: 0,
-    },
-  );
 }
 
 function createStyles(colors: AppColors) {
@@ -365,50 +318,6 @@ function createStyles(colors: AppColors) {
     fontSize: typography.sizes.caption,
     fontWeight: typography.weights.medium,
     lineHeight: typography.lineHeights.caption,
-  },
-  modalScreen: {
-    backgroundColor: colors.background,
-    flex: 1,
-  },
-  modalHeader: {
-    alignItems: "center",
-    borderBottomColor: colors.border,
-    borderBottomWidth: 1,
-    flexDirection: "row",
-    gap: spacing.md,
-    justifyContent: "space-between",
-    paddingHorizontal: spacing.xl,
-    paddingBottom: spacing.md,
-  },
-  modalTitleGroup: {
-    flex: 1,
-    gap: 2,
-    minWidth: 0,
-  },
-  modalTitle: {
-    color: colors.text,
-    fontSize: 22,
-    fontWeight: typography.weights.bold,
-    lineHeight: 28,
-  },
-  closeButton: {
-    alignItems: "center",
-    backgroundColor: colors.surfaceElevated,
-    borderColor: colors.border,
-    borderRadius: 999,
-    borderWidth: 1,
-    height: 44,
-    justifyContent: "center",
-    width: 44,
-  },
-  modalContent: {
-    gap: spacing.md,
-    paddingHorizontal: spacing.xl,
-    paddingBottom: spacing.xxxl,
-    paddingTop: spacing.lg,
-  },
-  pressed: {
-    opacity: 0.84,
   },
   });
 }

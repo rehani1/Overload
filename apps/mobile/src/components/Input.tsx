@@ -55,7 +55,7 @@ function createStyles(colors: AppColors) {
     color: colors.textMuted,
     fontSize: typography.sizes.caption,
     fontWeight: typography.weights.semibold,
-    letterSpacing: 0.7,
+    letterSpacing: 0,
     lineHeight: typography.lineHeights.caption,
     textTransform: "uppercase",
   },

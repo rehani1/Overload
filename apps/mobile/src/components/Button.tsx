@@ -124,7 +124,7 @@ function createStyles(colors: AppColors) {
     text: {
       fontSize: typography.sizes.small,
       fontWeight: typography.weights.semibold,
-      letterSpacing: 0.2,
+      letterSpacing: 0,
       lineHeight: typography.lineHeights.small,
     },
     disabled: {

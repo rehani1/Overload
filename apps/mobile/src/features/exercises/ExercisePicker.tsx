@@ -8,15 +8,17 @@ import { typography } from "@/constants/typography";
 import { useThemeColors } from "@/theme/ThemeProvider";
 import type { Exercise } from "@/types/exercise";
 
+import { exerciseLibrary } from "./exerciseLibrary";
 import { ExerciseList } from "./ExerciseList";
 import { ExerciseSearch } from "./ExerciseSearch";
-import { mockExercises } from "./mockExercises";
 
 type ExercisePickerProps = {
   onSelect: (exercise: Exercise) => void;
 };
 
-const allMuscleGroups = Array.from(new Set(mockExercises.map((exercise) => exercise.muscleGroup)));
+const allMuscleGroups = Array.from(
+  new Set(exerciseLibrary.map((exercise) => exercise.muscleGroup)),
+);
 
 export function ExercisePicker({ onSelect }: ExercisePickerProps) {
   const colors = useThemeColors();
@@ -25,7 +27,7 @@ export function ExercisePicker({ onSelect }: ExercisePickerProps) {
   const [selectedMuscleGroup, setSelectedMuscleGroup] = useState<string | null>(null);
 
   const normalizedQuery = query.trim().toLowerCase();
-  const filteredExercises = mockExercises.filter((exercise) => {
+  const filteredExercises = exerciseLibrary.filter((exercise) => {
     const matchesQuery = exercise.name.toLowerCase().includes(normalizedQuery);
     const matchesMuscleGroup =
       selectedMuscleGroup === null || exercise.muscleGroup === selectedMuscleGroup;

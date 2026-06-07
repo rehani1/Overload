@@ -16,11 +16,19 @@ export default function LoginScreen() {
   const { login } = useAuthStore();
   const colors = useThemeColors();
   const styles = createStyles(colors);
-  const [email, setEmail] = useState("rehan@example.com");
-  const [password, setPassword] = useState("password");
+  const [email, setEmail] = useState("");
+  const [error, setError] = useState("");
+  const [password, setPassword] = useState("");
 
   function handleLogin() {
-    login({ email, password });
+    const result = login({ email, password });
+
+    if (!result.user) {
+      setError(result.error ?? "Could not log in.");
+      return;
+    }
+
+    setError("");
     router.replace("/home");
   }
 
@@ -47,6 +55,7 @@ export default function LoginScreen() {
             secureTextEntry
             value={password}
           />
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
           <Button icon="arrow-right-on-rectangle" onPress={handleLogin}>
             Continue
           </Button>
@@ -84,7 +93,7 @@ function createStyles(colors: AppColors) {
     color: colors.text,
     fontSize: typography.sizes.display,
     fontWeight: typography.weights.bold,
-    letterSpacing: -0.8,
+    letterSpacing: 0,
     lineHeight: typography.lineHeights.display,
   },
   brandMeta: {
@@ -123,6 +132,12 @@ function createStyles(colors: AppColors) {
     minHeight: 44,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
+  },
+  errorText: {
+    color: colors.danger,
+    fontSize: typography.sizes.caption,
+    fontWeight: typography.weights.semibold,
+    lineHeight: typography.lineHeights.caption,
   },
   });
 }

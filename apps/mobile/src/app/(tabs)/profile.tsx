@@ -1,13 +1,15 @@
 import { useState } from "react";
 import { router } from "expo-router";
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { Button } from "@/components/Button";
+import { EmptyState } from "@/components/EmptyState";
 import { Header } from "@/components/Header";
 import { Icon } from "@/components/Icon";
 import { Input } from "@/components/Input";
+import { ModalShell } from "@/components/ModalShell";
 import { Screen } from "@/components/Screen";
+import { SexSegmentedControl } from "@/components/SexSegmentedControl";
 import type { AppColors } from "@/constants/colors";
 import { spacing } from "@/constants/spacing";
 import { typography } from "@/constants/typography";
@@ -15,7 +17,6 @@ import {
   NutritionEntryEditor,
   type NutritionEntryEditorState,
 } from "@/features/nutrition/NutritionEntryEditor";
-import { mockUser } from "@/features/profile/mockUser";
 import { WorkoutEditor } from "@/features/workouts/WorkoutEditor";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useNutritionStore } from "@/store/useNutritionStore";
@@ -23,7 +24,21 @@ import { usePresetStore } from "@/store/usePresetStore";
 import { useThemeColors } from "@/theme/ThemeProvider";
 import type { NutritionEntry, NutritionTargetUpdate } from "@/types/nutrition";
 import type { MealPreset, WorkoutPreset } from "@/types/preset";
+import type { Sex, User } from "@/types/user";
 import type { Workout } from "@/types/workout";
+import {
+  buildDateTimeFromDate as buildDateTime,
+  formatDateKey as getDateKeyFromDate,
+} from "@/utils/date";
+import { createId } from "@/utils/id";
+import {
+  calculateMacroCalories,
+  formatRoundedNumber as formatNumber,
+  parseNonNegativeDecimal as parseDecimal,
+  parsePositiveDecimal,
+  sanitizeDecimalInput,
+} from "@/utils/nutrition";
+import { cloneWorkout } from "@/utils/workout";
 
 type TargetDraft = {
   carbsGrams: string;
@@ -32,14 +47,25 @@ type TargetDraft = {
   proteinGrams: string;
 };
 
+type BodyStatsDraft = {
+  heightInches: string;
+  sex: Sex;
+  weightPounds: string;
+};
+
 export default function ProfileScreen() {
-  const { target, updateTarget } = useNutritionStore();
+  const {
+    isHydrated: isNutritionHydrated,
+    target,
+    updateTarget,
+  } = useNutritionStore();
   const { updateUser, user } = useAuthStore();
   const {
     addMealPreset,
     addWorkoutPreset,
     deleteMealPreset,
     deleteWorkoutPreset,
+    isHydrated: arePresetsHydrated,
     mealPresets,
     updateMealPreset,
     updateWorkoutPreset,
@@ -47,13 +73,15 @@ export default function ProfileScreen() {
   } = usePresetStore();
   const colors = useThemeColors();
   const styles = createStyles(colors);
-  const profileUser = user ?? mockUser;
-  const fullName = `${profileUser.firstName} ${profileUser.lastName}`;
-  const latestWorkoutPreset = workoutPresets[0];
-  const latestMealPreset = mealPresets[0];
-  const [goalDraft, setGoalDraft] = useState(profileUser.goal);
+  const profileUser = user;
+  const [goalDraft, setGoalDraft] = useState(profileUser?.goal ?? "");
   const [isGoalEditing, setIsGoalEditing] = useState(false);
   const [goalError, setGoalError] = useState("");
+  const [bodyStatsDraft, setBodyStatsDraft] = useState<BodyStatsDraft>(
+    getBodyStatsDraft(profileUser),
+  );
+  const [isBodyStatsEditing, setIsBodyStatsEditing] = useState(false);
+  const [bodyStatsError, setBodyStatsError] = useState("");
   const [targetDraft, setTargetDraft] = useState<TargetDraft>(getTargetDraft(target));
   const [isTargetEditing, setIsTargetEditing] = useState(false);
   const [targetError, setTargetError] = useState("");
@@ -78,6 +106,10 @@ export default function ProfileScreen() {
   ];
 
   function startGoalEdit() {
+    if (!profileUser) {
+      return;
+    }
+
     setGoalDraft(profileUser.goal);
     setGoalError("");
     setIsGoalEditing(true);
@@ -94,6 +126,34 @@ export default function ProfileScreen() {
     updateUser({ goal: nextGoal });
     setGoalError("");
     setIsGoalEditing(false);
+  }
+
+  function startBodyStatsEdit() {
+    if (!profileUser) {
+      return;
+    }
+
+    setBodyStatsDraft(getBodyStatsDraft(profileUser));
+    setBodyStatsError("");
+    setIsBodyStatsEditing(true);
+  }
+
+  function saveBodyStats() {
+    const heightInches = parsePositiveDecimal(bodyStatsDraft.heightInches);
+    const weightPounds = parsePositiveDecimal(bodyStatsDraft.weightPounds);
+
+    if (heightInches === null || weightPounds === null) {
+      setBodyStatsError("Use valid positive height and weight values.");
+      return;
+    }
+
+    updateUser({
+      heightInches,
+      sex: bodyStatsDraft.sex,
+      weightPounds,
+    });
+    setBodyStatsError("");
+    setIsBodyStatsEditing(false);
   }
 
   function startTargetEdit() {
@@ -177,6 +237,39 @@ export default function ProfileScreen() {
     }
   }
 
+  if (!profileUser) {
+    return (
+      <Screen>
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          <Header title="Profile" />
+          <EmptyState
+            message="Log in or create an account to view your profile."
+            title="No local profile"
+          />
+          <Button icon="arrow-right-on-rectangle" onPress={() => router.replace("/login")}>
+            Log In
+          </Button>
+        </ScrollView>
+      </Screen>
+    );
+  }
+
+  if (!isNutritionHydrated || !arePresetsHydrated) {
+    return (
+      <Screen>
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          <Header title="Profile" />
+          <EmptyState
+            message="Preparing your account-specific profile data."
+            title="Loading profile"
+          />
+        </ScrollView>
+      </Screen>
+    );
+  }
+
+  const fullName = `${profileUser.firstName} ${profileUser.lastName}`;
+
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -203,6 +296,93 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        {isBodyStatsEditing ? (
+          <View style={styles.statsPanel}>
+            <View style={styles.panelTitleRow}>
+              <Icon color={colors.primary} name="user" size={18} />
+              <Text style={styles.panelLabel}>Body stats</Text>
+            </View>
+
+            <View style={styles.targetInputRow}>
+              <View style={styles.targetInputColumn}>
+                <Input
+                  keyboardType="decimal-pad"
+                  label="Height"
+                  onChangeText={(value) =>
+                    setBodyStatsDraft((currentDraft) => ({
+                      ...currentDraft,
+                      heightInches: sanitizeDecimalInput(value),
+                    }))
+                  }
+                  placeholder="70 in"
+                  value={bodyStatsDraft.heightInches}
+                />
+              </View>
+              <View style={styles.targetInputColumn}>
+                <Input
+                  keyboardType="decimal-pad"
+                  label="Weight"
+                  onChangeText={(value) =>
+                    setBodyStatsDraft((currentDraft) => ({
+                      ...currentDraft,
+                      weightPounds: sanitizeDecimalInput(value),
+                    }))
+                  }
+                  placeholder="180 lb"
+                  value={bodyStatsDraft.weightPounds}
+                />
+              </View>
+            </View>
+
+            <SexSegmentedControl
+              onChange={(sex) =>
+                setBodyStatsDraft((currentDraft) => ({
+                  ...currentDraft,
+                  sex,
+                }))
+              }
+              value={bodyStatsDraft.sex}
+            />
+
+            {bodyStatsError ? <Text style={styles.errorText}>{bodyStatsError}</Text> : null}
+
+            <View style={styles.actionRow}>
+              <Button icon="check" onPress={saveBodyStats} style={styles.actionButton}>
+                Save
+              </Button>
+              <Button
+                icon="x-mark"
+                onPress={() => {
+                  setBodyStatsError("");
+                  setIsBodyStatsEditing(false);
+                }}
+                style={styles.actionButton}
+                variant="secondary"
+              >
+                Cancel
+              </Button>
+            </View>
+          </View>
+        ) : (
+          <Pressable
+            accessibilityRole="button"
+            onPress={startBodyStatsEdit}
+            style={styles.statsPanel}
+          >
+            <View style={styles.panelTitleRow}>
+              <Icon color={colors.primary} name="user" size={18} />
+              <Text style={styles.panelLabel}>Body stats</Text>
+              <Icon color={colors.textMuted} name="pencil-square" size={18} />
+            </View>
+
+            <View style={styles.profileStatsRow}>
+              <ProfileStat label="Height" value={formatHeight(profileUser.heightInches)} />
+              <ProfileStat label="Sex" value={formatSex(profileUser.sex)} />
+              <ProfileStat label="Weight" value={formatWeight(profileUser.weightPounds)} />
+            </View>
+          </Pressable>
+        )}
+
         <View style={styles.presetRow}>
           <Pressable
             accessibilityRole="button"
@@ -211,9 +391,6 @@ export default function ProfileScreen() {
           >
             <Text style={styles.presetLabel}>Workout Preset</Text>
             <Text style={styles.presetCount}>{workoutPresets.length}</Text>
-            <Text numberOfLines={1} style={styles.presetMeta}>
-              {latestWorkoutPreset?.title ?? "No saved workouts"}
-            </Text>
           </Pressable>
           <Pressable
             accessibilityRole="button"
@@ -222,9 +399,6 @@ export default function ProfileScreen() {
           >
             <Text style={styles.presetLabel}>Meal Preset</Text>
             <Text style={styles.presetCount}>{mealPresets.length}</Text>
-            <Text numberOfLines={1} style={styles.presetMeta}>
-              {latestMealPreset?.foodName ?? "No saved meals"}
-            </Text>
           </Pressable>
         </View>
 
@@ -434,6 +608,23 @@ export default function ProfileScreen() {
   );
 }
 
+type ProfileStatProps = {
+  label: string;
+  value: string;
+};
+
+function ProfileStat({ label, value }: ProfileStatProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
+
+  return (
+    <View style={styles.profileStatCard}>
+      <Text style={styles.profileStatLabel}>{label}</Text>
+      <Text style={styles.profileStatValue}>{value}</Text>
+    </View>
+  );
+}
+
 type PresetManagerModalProps = {
   activeType: "meal" | "workout" | null;
   editingMealPresetId: string | null;
@@ -482,129 +673,110 @@ function PresetManagerModal({
   const hasPresets = isWorkout ? workoutPresets.length > 0 : mealPresets.length > 0;
 
   return (
-    <Modal
-      animationType="slide"
-      onRequestClose={onClose}
-      presentationStyle="pageSheet"
+    <ModalShell
+      closeAccessibilityLabel="Close presets"
+      eyebrow="Presets"
+      onClose={onClose}
+      title={title}
       visible={activeType !== null}
     >
-      <SafeAreaView edges={["top"]} style={styles.modalScreen}>
-        <View style={styles.modalHeader}>
-          <View style={styles.modalTitleGroup}>
-            <Text style={styles.modalEyebrow}>Presets</Text>
-            <Text numberOfLines={2} style={styles.modalTitle}>{title}</Text>
-          </View>
-          <Pressable
-            accessibilityLabel="Close presets"
-            accessibilityRole="button"
-            hitSlop={8}
-            onPress={onClose}
-            style={styles.closeButton}
-          >
-            <Icon color={colors.text} name="x-mark" size={20} />
-          </Pressable>
+      <Button icon="plus" onPress={onAddPreset} style={styles.addPresetButton}>
+        Add Preset
+      </Button>
+
+      {!hasPresets ? (
+        <View style={styles.emptyPresetBox}>
+          <Text style={styles.emptyPresetTitle}>No presets yet</Text>
+          <Text style={styles.emptyPresetText}>
+            Save a calendar item as a preset to manage it here.
+          </Text>
         </View>
+      ) : null}
 
-        <ScrollView contentContainerStyle={styles.modalContent} showsVerticalScrollIndicator={false}>
-          <Button icon="plus" onPress={onAddPreset} style={styles.addPresetButton}>
-            Add Preset
-          </Button>
+      {isWorkout
+        ? workoutPresets.map((preset) => {
+            const isEditing = editingWorkoutPresetId === preset.id;
 
-          {!hasPresets ? (
-            <View style={styles.emptyPresetBox}>
-              <Text style={styles.emptyPresetTitle}>No presets yet</Text>
-              <Text style={styles.emptyPresetText}>
-                Save a calendar item as a preset to manage it here.
-              </Text>
-            </View>
-          ) : null}
-
-          {isWorkout
-            ? workoutPresets.map((preset) => {
-                const isEditing = editingWorkoutPresetId === preset.id;
-
-                return (
-                  <View key={preset.id} style={styles.presetDetailCard}>
-                    <Pressable
-                      accessibilityRole="button"
-                      onPress={() => onStartWorkoutEdit(preset)}
-                      style={styles.presetSummaryRow}
-                    >
-                      <View style={styles.presetSummaryCopy}>
-                        <Text style={styles.presetDetailTitle}>{preset.title}</Text>
-                        <Text style={styles.presetDetailMeta}>
-                          {preset.workout.exercises.length} exercises
-                        </Text>
-                      </View>
-                      <Icon
-                        color={colors.textMuted}
-                        name={isEditing ? "chevron-up" : "chevron-down"}
-                        size={18}
-                      />
-                    </Pressable>
-
-                    {isEditing && workoutDraft ? (
-                      <>
-                        <WorkoutEditor
-                          onCancel={onClose}
-                          onSave={() => onSaveWorkout(preset)}
-                          onUpdateWorkout={onWorkoutDraftChange}
-                          saveLabel="Save Preset"
-                          unitPreference={unitPreference}
-                          workout={workoutDraft}
-                        />
-                        <Button
-                          icon="trash"
-                          onPress={() => onDeleteWorkout(preset)}
-                          style={styles.actionButton}
-                          variant="danger"
-                        >
-                          Delete Preset
-                        </Button>
-                      </>
-                    ) : null}
+            return (
+              <View key={preset.id} style={styles.presetDetailCard}>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => onStartWorkoutEdit(preset)}
+                  style={styles.presetSummaryRow}
+                >
+                  <View style={styles.presetSummaryCopy}>
+                    <Text style={styles.presetDetailTitle}>{preset.title}</Text>
+                    <Text style={styles.presetDetailMeta}>
+                      {preset.workout.exercises.length} exercises
+                    </Text>
                   </View>
-                );
-              })
-            : mealPresets.map((preset) => {
-                const isEditing = editingMealPresetId === preset.id;
+                  <Icon
+                    color={colors.textMuted}
+                    name={isEditing ? "chevron-up" : "chevron-down"}
+                    size={18}
+                  />
+                </Pressable>
 
-                return (
-                  <View key={preset.id} style={styles.presetDetailCard}>
-                    <Pressable
-                      accessibilityRole="button"
-                      onPress={() => onStartMealEdit(preset)}
-                      style={styles.presetSummaryRow}
+                {isEditing && workoutDraft ? (
+                  <>
+                    <WorkoutEditor
+                      onCancel={onClose}
+                      onSave={() => onSaveWorkout(preset)}
+                      onUpdateWorkout={onWorkoutDraftChange}
+                      saveLabel="Save Preset"
+                      unitPreference={unitPreference}
+                      workout={workoutDraft}
+                    />
+                    <Button
+                      icon="trash"
+                      onPress={() => onDeleteWorkout(preset)}
+                      style={styles.actionButton}
+                      variant="danger"
                     >
-                      <View style={styles.presetSummaryCopy}>
-                        <Text style={styles.presetDetailTitle}>{preset.foodName}</Text>
-                        <Text style={styles.presetDetailMeta}>
-                          {preset.entry.calories} cal
-                        </Text>
-                      </View>
-                      <Icon
-                        color={colors.textMuted}
-                        name={isEditing ? "chevron-up" : "chevron-down"}
-                        size={18}
-                      />
-                    </Pressable>
+                      Delete Preset
+                    </Button>
+                  </>
+                ) : null}
+              </View>
+            );
+          })
+        : mealPresets.map((preset) => {
+            const isEditing = editingMealPresetId === preset.id;
 
-                    {isEditing && mealDraft ? (
-                      <NutritionEntryEditor
-                        draft={mealDraft}
-                        onCancel={onClose}
-                        onChange={onMealDraftChange}
-                        onDelete={() => onDeleteMeal(preset)}
-                        onSave={() => onSaveMeal(preset)}
-                        saveLabel="Save Preset"
-                      />
-                    ) : null}
+            return (
+              <View key={preset.id} style={styles.presetDetailCard}>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => onStartMealEdit(preset)}
+                  style={styles.presetSummaryRow}
+                >
+                  <View style={styles.presetSummaryCopy}>
+                    <Text style={styles.presetDetailTitle}>{preset.foodName}</Text>
+                    <Text style={styles.presetDetailMeta}>
+                      {preset.entry.calories} cal
+                    </Text>
                   </View>
-                );
-              })}
-        </ScrollView>
-      </SafeAreaView>
-    </Modal>
+                  <Icon
+                    color={colors.textMuted}
+                    name={isEditing ? "chevron-up" : "chevron-down"}
+                    size={18}
+                  />
+                </Pressable>
+
+                {isEditing && mealDraft ? (
+                  <NutritionEntryEditor
+                    draft={mealDraft}
+                    onCancel={onClose}
+                    onChange={onMealDraftChange}
+                    onDelete={() => onDeleteMeal(preset)}
+                    onSave={() => onSaveMeal(preset)}
+                    saveLabel="Save Preset"
+                  />
+                ) : null}
+              </View>
+            );
+          })}
+    </ModalShell>
   );
 }
 
@@ -671,33 +843,6 @@ function calculateTargetDraftCalories(draft: TargetDraft) {
   });
 }
 
-function calculateMacroCalories({
-  carbsGrams,
-  fatGrams,
-  proteinGrams,
-}: {
-  carbsGrams: number;
-  fatGrams: number;
-  proteinGrams: number;
-}) {
-  return Math.round(proteinGrams * 4 + carbsGrams * 4 + fatGrams * 9);
-}
-
-function cloneWorkout(workout: Workout): Workout {
-  return {
-    ...workout,
-    exercises: workout.exercises.map((workoutExercise) => ({
-      ...workoutExercise,
-      exercise: {
-        ...workoutExercise.exercise,
-      },
-      sets: workoutExercise.sets.map((set) => ({
-        ...set,
-      })),
-    })),
-  };
-}
-
 function createEmptyMealPreset(): NutritionEntry {
   const now = new Date().toISOString();
 
@@ -726,32 +871,6 @@ function createEmptyWorkoutPreset(): Workout {
   };
 }
 
-function buildDateTime(date: Date, hours: number, minutes: number) {
-  return new Date(
-    date.getFullYear(),
-    date.getMonth(),
-    date.getDate(),
-    hours,
-    minutes,
-  ).toISOString();
-}
-
-function createId(prefix: string) {
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
-function formatNumber(value: number) {
-  return Math.round(value).toLocaleString("en-US");
-}
-
-function getDateKeyFromDate(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-
-  return `${year}-${month}-${day}`;
-}
-
 function getMealPresetDraft(entry: NutritionEntry): NutritionEntryEditorState {
   return {
     calories: String(entry.calories),
@@ -762,6 +881,14 @@ function getMealPresetDraft(entry: NutritionEntry): NutritionEntryEditorState {
     notes: entry.notes ?? "",
     proteinGrams: String(entry.proteinGrams),
     servingQuantity: String(entry.servingQuantity),
+  };
+}
+
+function getBodyStatsDraft(user: User | null): BodyStatsDraft {
+  return {
+    heightInches: user ? String(user.heightInches) : "",
+    sex: user?.sex ?? "male",
+    weightPounds: user ? String(user.weightPounds) : "",
   };
 }
 
@@ -780,39 +907,20 @@ function getTargetDraft(target: NutritionTargetUpdate): TargetDraft {
   };
 }
 
-function parseDecimal(value: string) {
-  if (!value.trim()) {
-    return 0;
-  }
+function formatHeight(heightInches: number) {
+  const roundedHeight = Math.round(heightInches);
+  const feet = Math.floor(roundedHeight / 12);
+  const inches = roundedHeight % 12;
 
-  const parsedValue = Number(value);
-
-  if (!Number.isFinite(parsedValue) || parsedValue < 0) {
-    return null;
-  }
-
-  return Math.round(parsedValue * 10) / 10;
+  return `${feet}'${inches}"`;
 }
 
-function parsePositiveDecimal(value: string) {
-  const parsedValue = parseDecimal(value);
-
-  if (parsedValue === null || parsedValue <= 0) {
-    return null;
-  }
-
-  return parsedValue;
+function formatSex(sex: string) {
+  return sex.charAt(0).toUpperCase() + sex.slice(1);
 }
 
-function sanitizeDecimalInput(value: string) {
-  const cleanedValue = value.replaceAll(",", ".").replace(/[^\d.]/g, "");
-  const [wholeValue, ...decimalParts] = cleanedValue.split(".");
-
-  if (decimalParts.length === 0) {
-    return wholeValue;
-  }
-
-  return `${wholeValue}.${decimalParts.join("")}`;
+function formatWeight(weightPounds: number) {
+  return `${formatNumber(weightPounds)} lb`;
 }
 
 function createStyles(colors: AppColors) {
@@ -862,6 +970,42 @@ function createStyles(colors: AppColors) {
       fontSize: typography.sizes.body,
       lineHeight: typography.lineHeights.body,
     },
+    statsPanel: {
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: 26,
+      borderWidth: 1,
+      gap: spacing.md,
+      padding: spacing.lg,
+    },
+    profileStatsRow: {
+      flexDirection: "row",
+      gap: spacing.sm,
+    },
+    profileStatCard: {
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: 20,
+      borderWidth: 1,
+      flex: 1,
+      gap: spacing.xs,
+      minWidth: 0,
+      padding: spacing.md,
+    },
+    profileStatLabel: {
+      color: colors.textMuted,
+      fontSize: typography.sizes.caption,
+      fontWeight: typography.weights.semibold,
+      lineHeight: typography.lineHeights.caption,
+      textAlign: "center",
+    },
+    profileStatValue: {
+      color: colors.text,
+      fontSize: typography.sizes.body,
+      fontWeight: typography.weights.bold,
+      lineHeight: typography.lineHeights.body,
+      textAlign: "center",
+    },
     presetRow: {
       flexDirection: "row",
       gap: spacing.md,
@@ -889,14 +1033,6 @@ function createStyles(colors: AppColors) {
       fontSize: typography.sizes.title,
       fontWeight: typography.weights.bold,
       lineHeight: typography.lineHeights.title,
-      textAlign: "center",
-    },
-    presetMeta: {
-      color: colors.textMuted,
-      fontSize: typography.sizes.caption,
-      fontWeight: typography.weights.medium,
-      lineHeight: typography.lineHeights.caption,
-      maxWidth: "100%",
       textAlign: "center",
     },
     goalPanel: {
@@ -1013,56 +1149,6 @@ function createStyles(colors: AppColors) {
       fontSize: typography.sizes.caption,
       fontWeight: typography.weights.semibold,
       lineHeight: typography.lineHeights.caption,
-    },
-    modalScreen: {
-      backgroundColor: colors.background,
-      flex: 1,
-    },
-    modalHeader: {
-      alignItems: "center",
-      borderBottomColor: colors.border,
-      borderBottomWidth: 1,
-      flexDirection: "row",
-      gap: spacing.md,
-      justifyContent: "space-between",
-      paddingBottom: spacing.md,
-      paddingHorizontal: spacing.xl,
-      paddingTop: spacing.md,
-    },
-    modalTitleGroup: {
-      flex: 1,
-      gap: 2,
-      minWidth: 0,
-    },
-    modalEyebrow: {
-      color: colors.textMuted,
-      fontSize: typography.sizes.caption,
-      fontWeight: typography.weights.semibold,
-      letterSpacing: 0.8,
-      lineHeight: typography.lineHeights.caption,
-      textTransform: "uppercase",
-    },
-    modalTitle: {
-      color: colors.text,
-      fontSize: 22,
-      fontWeight: typography.weights.bold,
-      lineHeight: 28,
-    },
-    closeButton: {
-      alignItems: "center",
-      backgroundColor: colors.surfaceElevated,
-      borderColor: colors.border,
-      borderRadius: 999,
-      borderWidth: 1,
-      height: 44,
-      justifyContent: "center",
-      width: 44,
-    },
-    modalContent: {
-      gap: spacing.md,
-      paddingBottom: spacing.xxxl,
-      paddingHorizontal: spacing.xl,
-      paddingTop: spacing.lg,
     },
     emptyPresetBox: {
       backgroundColor: colors.surface,

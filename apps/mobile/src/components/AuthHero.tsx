@@ -50,7 +50,7 @@ function createStyles(colors: AppColors) {
     color: colors.primaryMuted,
     fontSize: typography.sizes.caption,
     fontWeight: typography.weights.semibold,
-    letterSpacing: 1,
+    letterSpacing: 0,
     lineHeight: typography.lineHeights.caption,
     textTransform: "uppercase",
   },
@@ -58,7 +58,7 @@ function createStyles(colors: AppColors) {
     color: colors.onPrimary,
     fontSize: typography.sizes.display,
     fontWeight: typography.weights.bold,
-    letterSpacing: -0.7,
+    letterSpacing: 0,
     lineHeight: typography.lineHeights.display,
   },
   subtitle: {

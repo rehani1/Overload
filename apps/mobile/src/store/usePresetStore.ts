@@ -1,9 +1,11 @@
 import { useSyncExternalStore } from "react";
 
-import { loadStoredJson, saveStoredJson } from "@/lib/storage";
+import { loadAccountScopedJson, saveAccountScopedJson } from "@/lib/accountStorage";
 import type { NutritionEntry } from "@/types/nutrition";
 import type { MealPreset, WorkoutPreset } from "@/types/preset";
 import type { Workout } from "@/types/workout";
+import { createId } from "@/utils/id";
+import { cloneWorkout } from "@/utils/workout";
 
 const PRESET_STORAGE_KEY = "overload.presets.v1";
 
@@ -27,12 +29,10 @@ let state: PresetState = {
   mealPresets: [],
   workoutPresets: [],
 };
+let activeAccountId: string | null = null;
+let activeAccountVersion = 0;
 
 const listeners = new Set<() => void>();
-
-function createId(prefix: string) {
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
 
 function emit(nextState: PresetState) {
   state = nextState;
@@ -40,6 +40,7 @@ function emit(nextState: PresetState) {
 }
 
 function emitAndPersist(nextState: PresetState) {
+  activeAccountVersion += 1;
   emit(nextState);
   void savePresetState(nextState);
 }
@@ -159,40 +160,59 @@ function cloneNutritionEntry(entry: NutritionEntry): NutritionEntry {
   };
 }
 
-function cloneWorkout(workout: Workout): Workout {
-  return {
-    ...workout,
-    exercises: workout.exercises.map((workoutExercise) => ({
-      ...workoutExercise,
-      exercise: {
-        ...workoutExercise.exercise,
-      },
-      sets: workoutExercise.sets.map((set) => ({
-        ...set,
-      })),
-    })),
-  };
+export function setPresetStoreAccount(accountId: string | null) {
+  if (activeAccountId === accountId && state.isHydrated) {
+    return;
+  }
+
+  activeAccountId = accountId;
+  activeAccountVersion += 1;
+
+  if (!accountId) {
+    emit(createEmptyPresetState(true));
+    return;
+  }
+
+  emit(createEmptyPresetState(false));
+  void hydratePresetState(accountId, activeAccountVersion);
 }
 
-async function hydratePresetState() {
-  const storedState = await loadStoredJson<PresetState>(PRESET_STORAGE_KEY);
-
-  emit({
+async function hydratePresetState(accountId: string, accountVersion: number) {
+  const storedState = await loadAccountScopedJson<PresetState>(
+    PRESET_STORAGE_KEY,
+    accountId,
+  );
+  const nextState: PresetState = {
     isHydrated: true,
     mealPresets: storedState?.mealPresets ?? [],
     workoutPresets: storedState?.workoutPresets ?? [],
-  });
+  };
+
+  if (activeAccountId !== accountId || activeAccountVersion !== accountVersion) {
+    return;
+  }
+
+  emit(nextState);
+  void savePresetStateForAccount(accountId, nextState);
 }
 
 async function savePresetState(nextState: PresetState) {
-  await saveStoredJson<PresetState>(PRESET_STORAGE_KEY, {
+  const accountId = activeAccountId;
+
+  if (!accountId) {
+    return;
+  }
+
+  await savePresetStateForAccount(accountId, nextState);
+}
+
+async function savePresetStateForAccount(accountId: string, nextState: PresetState) {
+  await saveAccountScopedJson<PresetState>(PRESET_STORAGE_KEY, accountId, {
     isHydrated: true,
     mealPresets: nextState.mealPresets,
     workoutPresets: nextState.workoutPresets,
   });
 }
-
-void hydratePresetState();
 
 function buildStore(snapshot: PresetState): PresetStore {
   return {
@@ -203,6 +223,14 @@ function buildStore(snapshot: PresetState): PresetStore {
     deleteWorkoutPreset,
     updateMealPreset,
     updateWorkoutPreset,
+  };
+}
+
+function createEmptyPresetState(isHydrated: boolean): PresetState {
+  return {
+    isHydrated,
+    mealPresets: [],
+    workoutPresets: [],
   };
 }
 

@@ -19,6 +19,8 @@ import { useThemeColors } from "@/theme/ThemeProvider";
 import type { WorkoutPreset } from "@/types/preset";
 import type { UnitPreference } from "@/types/user";
 import type { Workout, WorkoutExercise, WorkoutSet } from "@/types/workout";
+import { createId } from "@/utils/id";
+import { sanitizeDecimalInput } from "@/utils/nutrition";
 
 type WorkoutEditorProps = {
   cancelLabel?: string;
@@ -499,10 +501,6 @@ function buildWorkoutDate(dateKey: string, timeValue: string, fallbackDate: stri
   return new Date(year, month - 1, day, hours, minutes).toISOString();
 }
 
-function createId(prefix: string) {
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
 function getDateKey(date: string) {
   const parsedDate = new Date(date);
   const year = parsedDate.getFullYear();
@@ -548,17 +546,6 @@ function parseRpe(value: string) {
   }
 
   return Math.min(Math.max(Math.round(parsed * 10) / 10, 0), 10);
-}
-
-function sanitizeDecimalInput(value: string) {
-  const cleanedValue = value.replaceAll(",", ".").replace(/[^\d.]/g, "");
-  const [wholeValue, ...decimalParts] = cleanedValue.split(".");
-
-  if (decimalParts.length === 0) {
-    return wholeValue;
-  }
-
-  return `${wholeValue}.${decimalParts.join("")}`;
 }
 
 function sanitizeIntegerInput(value: string) {

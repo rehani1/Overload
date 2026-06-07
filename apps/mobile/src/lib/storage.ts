@@ -1,6 +1,10 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export async function loadStoredJson<TValue>(key: string): Promise<TValue | null> {
+  if (!canUseStorage()) {
+    return null;
+  }
+
   try {
     const storedValue = await AsyncStorage.getItem(key);
 
@@ -15,10 +19,29 @@ export async function loadStoredJson<TValue>(key: string): Promise<TValue | null
 }
 
 export async function removeStoredJson(key: string): Promise<void> {
-  await AsyncStorage.removeItem(key);
+  if (!canUseStorage()) {
+    return;
+  }
+
+  try {
+    await AsyncStorage.removeItem(key);
+  } catch {
+    // Storage is best-effort for local app state.
+  }
 }
 
 export async function saveStoredJson<TValue>(key: string, value: TValue): Promise<void> {
-  await AsyncStorage.setItem(key, JSON.stringify(value));
+  if (!canUseStorage()) {
+    return;
+  }
+
+  try {
+    await AsyncStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Storage is best-effort for local app state.
+  }
 }
 
+function canUseStorage() {
+  return typeof window !== "undefined";
+}

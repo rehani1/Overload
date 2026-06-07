@@ -1,11 +1,21 @@
-import { Tabs } from "expo-router";
+import { Redirect, Tabs } from "expo-router";
 
 import { Icon } from "@/components/Icon";
 import { typography } from "@/constants/typography";
+import { useAuthStore } from "@/store/useAuthStore";
 import { useThemeColors } from "@/theme/ThemeProvider";
 
 export default function TabLayout() {
+  const { isAuthenticated, isHydrated } = useAuthStore();
   const colors = useThemeColors();
+
+  if (!isHydrated) {
+    return null;
+  }
+
+  if (!isAuthenticated) {
+    return <Redirect href="/login" />;
+  }
 
   return (
     <Tabs

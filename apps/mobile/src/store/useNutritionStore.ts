@@ -1,10 +1,7 @@
 import { useSyncExternalStore } from "react";
 
-import {
-  defaultNutritionTarget,
-  mockNutritionEntries,
-} from "@/features/nutrition/mockNutrition";
-import { loadStoredJson, saveStoredJson } from "@/lib/storage";
+import { defaultNutritionTarget } from "@/features/nutrition/defaultNutritionTarget";
+import { loadAccountScopedJson, saveAccountScopedJson } from "@/lib/accountStorage";
 import type {
   NutritionEntry,
   NutritionEntryDraft,
@@ -12,28 +9,39 @@ import type {
   NutritionTarget,
   NutritionTargetUpdate,
 } from "@/types/nutrition";
+import { calculateMacroCalories } from "@/utils/nutrition";
 
 const NUTRITION_STORAGE_KEY = "overload.nutrition.v1";
+const REMOVED_SEED_ENTRY_IDS = new Set([
+  "11111111-1111-4111-8111-111111111111",
+  "22222222-2222-4222-8222-222222222222",
+]);
 
 type NutritionState = {
   entries: NutritionEntry[];
   isHydrated: boolean;
   target: NutritionTarget;
+  targetsByDate: Record<string, NutritionTarget>;
 };
 
 type NutritionStore = NutritionState & {
   addEntry: (draft: NutritionEntryDraft) => NutritionEntry;
   deleteEntry: (entryId: string) => void;
+  getTargetForDate: (date: string) => NutritionTarget;
+  initializeTarget: (updates: NutritionTargetUpdate) => NutritionTarget;
   restoreEntry: (entry: NutritionEntry) => void;
   updateEntry: (entryId: string, updates: NutritionEntryUpdate) => NutritionEntry | null;
   updateTarget: (updates: NutritionTargetUpdate) => NutritionTarget;
 };
 
 let state: NutritionState = {
-  entries: mockNutritionEntries,
+  entries: [],
   isHydrated: false,
   target: defaultNutritionTarget,
+  targetsByDate: {},
 };
+let activeAccountId: string | null = null;
+let activeAccountVersion = 0;
 
 const listeners = new Set<() => void>();
 
@@ -52,6 +60,7 @@ function emit(nextState: NutritionState) {
 }
 
 function emitAndPersist(nextState: NutritionState) {
+  activeAccountVersion += 1;
   emit(nextState);
   void saveNutritionState(nextState);
 }
@@ -79,6 +88,7 @@ function addEntry(draft: NutritionEntryDraft) {
     ...state,
     entries: sortEntries([entry, ...state.entries]),
     isHydrated: true,
+    targetsByDate: ensureTargetSnapshot(state.targetsByDate, entry.date, state.target),
   });
 
   return entry;
@@ -95,6 +105,12 @@ function deleteEntry(entryId: string) {
 function restoreEntry(entry: NutritionEntry) {
   const existingEntry = state.entries.find((currentEntry) => currentEntry.id === entry.id);
 
+  const nextTargetsByDate = ensureTargetSnapshot(
+    state.targetsByDate,
+    entry.date,
+    state.target,
+  );
+
   emitAndPersist({
     ...state,
     entries: sortEntries(
@@ -105,6 +121,7 @@ function restoreEntry(entry: NutritionEntry) {
         : [entry, ...state.entries],
     ),
     isHydrated: true,
+    targetsByDate: nextTargetsByDate,
   });
 }
 
@@ -133,12 +150,22 @@ function updateEntry(entryId: string, updates: NutritionEntryUpdate) {
       ),
     ),
     isHydrated: true,
+    targetsByDate: ensureTargetSnapshot(
+      state.targetsByDate,
+      updatedEntry.date,
+      state.target,
+    ),
   });
 
   return updatedEntry;
 }
 
 function updateTarget(updates: NutritionTargetUpdate) {
+  const historicalTargetsByDate = snapshotExistingEntryDates(
+    state.targetsByDate,
+    state.entries,
+    state.target,
+  );
   const updatedTarget: NutritionTarget = {
     ...state.target,
     ...updates,
@@ -150,28 +177,84 @@ function updateTarget(updates: NutritionTargetUpdate) {
     ...state,
     isHydrated: true,
     target: normalizedTarget,
+    targetsByDate: historicalTargetsByDate,
   });
 
   return normalizedTarget;
 }
 
-async function hydrateNutritionState() {
-  const storedState = await loadStoredJson<NutritionState>(NUTRITION_STORAGE_KEY);
+function initializeTarget(updates: NutritionTargetUpdate) {
+  const updatedTarget: NutritionTarget = {
+    ...state.target,
+    ...updates,
+    updatedAt: new Date().toISOString(),
+  };
+  const normalizedTarget = normalizeTarget(updatedTarget);
 
-  emit({
-    entries: storedState?.entries
-      ? mergeSeedEntries(storedState.entries)
-      : mockNutritionEntries,
+  emitAndPersist({
+    ...state,
+    isHydrated: true,
+    target: normalizedTarget,
+    targetsByDate: {},
+  });
+
+  return normalizedTarget;
+}
+
+export function setNutritionStoreAccount(accountId: string | null) {
+  if (activeAccountId === accountId && state.isHydrated) {
+    return;
+  }
+
+  activeAccountId = accountId;
+  activeAccountVersion += 1;
+
+  if (!accountId) {
+    emit(createEmptyNutritionState(true));
+    return;
+  }
+
+  emit(createEmptyNutritionState(false));
+  void hydrateNutritionState(accountId, activeAccountVersion);
+}
+
+async function hydrateNutritionState(accountId: string, accountVersion: number) {
+  const storedState = await loadAccountScopedJson<Partial<NutritionState>>(
+    NUTRITION_STORAGE_KEY,
+    accountId,
+  );
+  const entries = normalizeStoredEntries(storedState?.entries);
+  const nextState: NutritionState = {
+    entries,
     isHydrated: true,
     target: mergeStoredTarget(storedState?.target),
-  });
+    targetsByDate: mergeStoredTargetsByDate(storedState?.targetsByDate, entries),
+  };
+
+  if (activeAccountId !== accountId || activeAccountVersion !== accountVersion) {
+    return;
+  }
+
+  emit(nextState);
+  void saveNutritionStateForAccount(accountId, nextState);
 }
 
 async function saveNutritionState(nextState: NutritionState) {
-  await saveStoredJson<NutritionState>(NUTRITION_STORAGE_KEY, {
+  const accountId = activeAccountId;
+
+  if (!accountId) {
+    return;
+  }
+
+  await saveNutritionStateForAccount(accountId, nextState);
+}
+
+async function saveNutritionStateForAccount(accountId: string, nextState: NutritionState) {
+  await saveAccountScopedJson<NutritionState>(NUTRITION_STORAGE_KEY, accountId, {
     entries: nextState.entries,
     isHydrated: true,
     target: nextState.target,
+    targetsByDate: nextState.targetsByDate,
   });
 }
 
@@ -185,13 +268,14 @@ function sortEntries(entries: NutritionEntry[]) {
   });
 }
 
-function mergeSeedEntries(entries: NutritionEntry[]) {
-  const existingEntryIds = new Set(entries.map((entry) => entry.id));
-  const missingSeedEntries = mockNutritionEntries.filter(
-    (entry) => !existingEntryIds.has(entry.id),
+function normalizeStoredEntries(entries: NutritionEntry[] | undefined) {
+  return sortEntries(
+    (entries ?? []).filter(isUserNutritionEntry).map(normalizeEntry),
   );
+}
 
-  return sortEntries([...entries, ...missingSeedEntries].map(normalizeEntry));
+function isUserNutritionEntry(entry: NutritionEntry) {
+  return !REMOVED_SEED_ENTRY_IDS.has(entry.id);
 }
 
 function mergeStoredTarget(target?: NutritionTarget) {
@@ -201,12 +285,68 @@ function mergeStoredTarget(target?: NutritionTarget) {
   });
 }
 
-function calculateMacroCalories({
-  carbsGrams,
-  fatGrams,
-  proteinGrams,
-}: Pick<NutritionEntry, "carbsGrams" | "fatGrams" | "proteinGrams">) {
-  return Math.round(proteinGrams * 4 + carbsGrams * 4 + fatGrams * 9);
+function mergeStoredTargetsByDate(
+  targetsByDate: Record<string, NutritionTarget> | undefined,
+  entries: NutritionEntry[],
+) {
+  const entryDates = new Set(entries.map((entry) => entry.date));
+
+  return Object.fromEntries(
+    Object.entries(targetsByDate ?? {})
+      .filter(([date]) => entryDates.has(date))
+      .map(([date, target]) => [
+        date,
+        normalizeTarget({
+          ...defaultNutritionTarget,
+          ...target,
+        }),
+      ]),
+  );
+}
+
+function ensureTargetSnapshot(
+  targetsByDate: Record<string, NutritionTarget>,
+  date: string,
+  target: NutritionTarget,
+) {
+  if (targetsByDate[date]) {
+    return targetsByDate;
+  }
+
+  return {
+    ...targetsByDate,
+    [date]: snapshotTarget(target),
+  };
+}
+
+function snapshotExistingEntryDates(
+  targetsByDate: Record<string, NutritionTarget>,
+  entries: NutritionEntry[],
+  target: NutritionTarget,
+) {
+  const entryDates = new Set(entries.map((entry) => entry.date));
+
+  return Array.from(entryDates).reduce(
+    (nextTargetsByDate, date) =>
+      ensureTargetSnapshot(nextTargetsByDate, date, target),
+    targetsByDate,
+  );
+}
+
+function getTargetForDate(snapshot: NutritionState, date: string) {
+  const hasEntriesForDate = snapshot.entries.some((entry) => entry.date === date);
+
+  if (!hasEntriesForDate) {
+    return snapshot.target;
+  }
+
+  return snapshot.targetsByDate[date] ?? snapshot.target;
+}
+
+function snapshotTarget(target: NutritionTarget) {
+  return {
+    ...target,
+  };
 }
 
 function normalizeEntry(entry: NutritionEntry) {
@@ -223,16 +363,25 @@ function normalizeTarget(target: NutritionTarget) {
   };
 }
 
-void hydrateNutritionState();
-
 function buildStore(snapshot: NutritionState): NutritionStore {
   return {
     ...snapshot,
     addEntry,
     deleteEntry,
+    getTargetForDate: (date) => getTargetForDate(snapshot, date),
+    initializeTarget,
     restoreEntry,
     updateEntry,
     updateTarget,
+  };
+}
+
+function createEmptyNutritionState(isHydrated: boolean): NutritionState {
+  return {
+    entries: [],
+    isHydrated,
+    target: defaultNutritionTarget,
+    targetsByDate: {},
   };
 }
 

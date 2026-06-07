@@ -1,6 +1,7 @@
-import { router } from "expo-router";
+import { Redirect, router } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 
+import { isApiConfigured } from "@/api/client";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { Header } from "@/components/Header";
@@ -8,17 +9,15 @@ import { Screen } from "@/components/Screen";
 import type { AppColors } from "@/constants/colors";
 import { spacing } from "@/constants/spacing";
 import { typography } from "@/constants/typography";
-import { mockUser } from "@/features/profile/mockUser";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useAppTheme, useThemeColors } from "@/theme/ThemeProvider";
 import type { UnitPreference } from "@/types/user";
 
 export default function SettingsScreen() {
-  const { logout, updateUser, user } = useAuthStore();
+  const { isAuthenticated, isHydrated, logout, updateUser, user } = useAuthStore();
   const { isDark, setThemePreference } = useAppTheme();
   const colors = useThemeColors();
   const styles = createStyles(colors);
-  const profileUser = user ?? mockUser;
 
   function handleLogout() {
     logout();
@@ -32,6 +31,14 @@ export default function SettingsScreen() {
     }
 
     router.replace("/profile");
+  }
+
+  if (!isHydrated) {
+    return null;
+  }
+
+  if (!isAuthenticated) {
+    return <Redirect href="/login" />;
   }
 
   return (
@@ -48,8 +55,12 @@ export default function SettingsScreen() {
 
         <Card title="Preferences">
           <SettingsUnitRow
-            onValueChange={(unitPreference) => updateUser({ unitPreference })}
-            value={profileUser.unitPreference}
+            onValueChange={(unitPreference) => {
+              if (user) {
+                updateUser({ unitPreference });
+              }
+            }}
+            value={user?.unitPreference ?? "lb"}
           />
           <SettingsToggleRow
             helperText="Override system appearance."
@@ -60,8 +71,7 @@ export default function SettingsScreen() {
         </Card>
 
         <Card title="App">
-          <SettingsRow label="Mode" value="Local" />
-          <SettingsRow label="Sync" value="Not connected" />
+          <SettingsRow label="Web" value={isApiConfigured ? "Synced" : "Not synced"} />
         </Card>
 
         <Card title="Account">

@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { router } from "expo-router";
+import { Redirect, router } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -14,27 +14,33 @@ import { useActiveWorkoutStore } from "@/store/useActiveWorkoutStore";
 import { useWorkoutHistoryStore } from "@/store/useWorkoutHistoryStore";
 import { useThemeColors } from "@/theme/ThemeProvider";
 import type { Workout } from "@/types/workout";
+import { buildDateTimeFromDate } from "@/utils/date";
+import { createId } from "@/utils/id";
 
 export default function ActiveWorkoutScreen() {
   const {
     activeWorkout,
     finishWorkout,
-    isHydrated,
+    isHydrated: isActiveWorkoutHydrated,
     resetWorkout,
     startWorkout,
     updateWorkout,
   } = useActiveWorkoutStore();
-  const { user } = useAuthStore();
+  const {
+    isAuthenticated,
+    isHydrated: isAuthHydrated,
+    user,
+  } = useAuthStore();
   const { addCompletedWorkout } = useWorkoutHistoryStore();
   const colors = useThemeColors();
   const styles = createStyles(colors);
   const unitPreference = user?.unitPreference ?? "lb";
 
   useEffect(() => {
-    if (isHydrated) {
+    if (isAuthenticated && isActiveWorkoutHydrated) {
       startWorkout(createEmptyWorkout());
     }
-  }, [isHydrated, startWorkout]);
+  }, [isActiveWorkoutHydrated, isAuthenticated, startWorkout]);
 
   function handleCreateWorkout() {
     const completedWorkout = finishWorkout();
@@ -57,7 +63,15 @@ export default function ActiveWorkoutScreen() {
     router.replace("/home");
   }
 
-  if (!isHydrated || !activeWorkout) {
+  if (!isAuthHydrated) {
+    return null;
+  }
+
+  if (!isAuthenticated) {
+    return <Redirect href="/login" />;
+  }
+
+  if (!isActiveWorkoutHydrated || !activeWorkout) {
     return (
       <SafeAreaView edges={["top"]} style={styles.screen}>
         <EmptyState title="Starting workout" message="Preparing a blank session." />
@@ -99,21 +113,11 @@ export default function ActiveWorkoutScreen() {
   );
 }
 
-function buildDateTime(date: Date, hours: number, minutes: number) {
-  return new Date(
-    date.getFullYear(),
-    date.getMonth(),
-    date.getDate(),
-    hours,
-    minutes,
-  ).toISOString();
-}
-
 function createEmptyWorkout(): Workout {
   return {
-    date: buildDateTime(new Date(), 12, 0),
+    date: buildDateTimeFromDate(new Date(), 12, 0),
     exercises: [],
-    id: `workout-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    id: createId("workout"),
     status: "active",
     title: "Workout",
   };
@@ -145,7 +149,7 @@ function createStyles(colors: AppColors) {
       color: colors.textMuted,
       fontSize: typography.sizes.caption,
       fontWeight: typography.weights.semibold,
-      letterSpacing: 0.8,
+      letterSpacing: 0,
       lineHeight: typography.lineHeights.caption,
       textTransform: "uppercase",
     },

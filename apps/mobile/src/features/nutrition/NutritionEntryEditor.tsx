@@ -15,6 +15,11 @@ import { spacing } from "@/constants/spacing";
 import { typography } from "@/constants/typography";
 import { useThemeColors } from "@/theme/ThemeProvider";
 import type { MealType } from "@/types/nutrition";
+import {
+  calculateMacroCalories,
+  parseNonNegativeDecimalOrZero,
+  sanitizeDecimalInput,
+} from "@/utils/nutrition";
 
 export type NutritionEntryEditorState = {
   calories: string;
@@ -186,39 +191,10 @@ function formatMealType(mealType: MealType) {
 
 function calculateDraftCalories(draft: NutritionEntryEditorState) {
   return calculateMacroCalories({
-    carbsGrams: parseNonNegativeNumber(draft.carbsGrams),
-    fatGrams: parseNonNegativeNumber(draft.fatGrams),
-    proteinGrams: parseNonNegativeNumber(draft.proteinGrams),
+    carbsGrams: parseNonNegativeDecimalOrZero(draft.carbsGrams),
+    fatGrams: parseNonNegativeDecimalOrZero(draft.fatGrams),
+    proteinGrams: parseNonNegativeDecimalOrZero(draft.proteinGrams),
   });
-}
-
-function calculateMacroCalories({
-  carbsGrams,
-  fatGrams,
-  proteinGrams,
-}: {
-  carbsGrams: number;
-  fatGrams: number;
-  proteinGrams: number;
-}) {
-  return Math.round(proteinGrams * 4 + carbsGrams * 4 + fatGrams * 9);
-}
-
-function parseNonNegativeNumber(value: string) {
-  const parsedValue = Number(value);
-
-  return Number.isFinite(parsedValue) && parsedValue >= 0 ? parsedValue : 0;
-}
-
-function sanitizeDecimalInput(value: string) {
-  const cleanedValue = value.replaceAll(",", ".").replace(/[^\d.]/g, "");
-  const [wholeValue, ...decimalParts] = cleanedValue.split(".");
-
-  if (decimalParts.length === 0) {
-    return wholeValue;
-  }
-
-  return `${wholeValue}.${decimalParts.join("")}`;
 }
 
 function createStyles(colors: AppColors) {

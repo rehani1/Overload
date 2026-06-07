@@ -1,13 +1,10 @@
 import { useState } from "react";
 import {
-  Modal,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 import { isApiConfigured } from "@/api/client";
 import {
@@ -21,6 +18,7 @@ import { Card } from "@/components/Card";
 import { EmptyState } from "@/components/EmptyState";
 import { Icon } from "@/components/Icon";
 import { Input } from "@/components/Input";
+import { ModalShell } from "@/components/ModalShell";
 import type { AppColors } from "@/constants/colors";
 import { spacing } from "@/constants/spacing";
 import { typography } from "@/constants/typography";
@@ -39,6 +37,15 @@ import type {
   NutritionTargetUpdate,
 } from "@/types/nutrition";
 import type { MealPreset } from "@/types/preset";
+import { addDays, formatDateKey, parseDateKey } from "@/utils/date";
+import {
+  calculateMacroCalories,
+  formatNutritionNumber,
+  getNutritionTotals,
+  parseNonNegativeDecimal,
+  parsePositiveDecimal,
+  sanitizeDecimalInput,
+} from "@/utils/nutrition";
 
 type SyncState = {
   kind: "idle" | "pending" | "success" | "error";
@@ -69,6 +76,7 @@ export function NutritionSection({
     addEntry,
     deleteEntry,
     entries,
+    getTargetForDate,
     isHydrated,
     restoreEntry,
     target,
@@ -78,7 +86,7 @@ export function NutritionSection({
   const { addMealPreset, mealPresets } = usePresetStore();
   const colors = useThemeColors();
   const styles = createStyles(colors);
-  const [localSelectedDate, setLocalSelectedDate] = useState(getDateKeyFromDate(new Date()));
+  const [localSelectedDate, setLocalSelectedDate] = useState(formatDateKey(new Date()));
   const [entryDraft, setEntryDraft] = useState<NutritionEntryEditorState>(
     getEmptyEntryFormState(),
   );
@@ -95,6 +103,7 @@ export function NutritionSection({
   const selectedDate = selectedDateProp ?? localSelectedDate;
   const entriesForDate = entries.filter((entry) => entry.date === selectedDate);
   const totals = getNutritionTotals(entriesForDate);
+  const targetForDate = getTargetForDate(selectedDate);
 
   async function handleAddEntry() {
     const draft = buildEntryDraft(entryDraft, selectedDate);
@@ -288,13 +297,13 @@ export function NutritionSection({
     updateTarget(targetUpdate);
     setSyncState({
       kind: "pending",
-      message: "Nutrition target saved locally. Syncing target...",
+      message: "Default nutrition target saved locally. Syncing target...",
     });
 
     if (!isApiConfigured) {
       setSyncState({
         kind: "success",
-        message: "Nutrition target saved locally. Backend sync is not configured yet.",
+        message: "Default nutrition target saved locally. Backend sync is not configured yet.",
       });
       return true;
     }
@@ -303,7 +312,7 @@ export function NutritionSection({
       await updateNutritionTarget(targetUpdate);
       setSyncState({
         kind: "success",
-        message: "Nutrition target synced.",
+        message: "Default nutrition target synced.",
       });
       return true;
     } catch {
@@ -315,14 +324,14 @@ export function NutritionSection({
       });
       setSyncState({
         kind: "error",
-        message: "Target sync failed. Local target was rolled back.",
+        message: "Default target sync failed. Local target was rolled back.",
       });
       return true;
     }
   }
 
   function handleDateChange(dayOffset: number) {
-    setLocalSelectedDate(getDateKeyFromDate(addDays(parseDateKey(selectedDate), dayOffset)));
+    setLocalSelectedDate(formatDateKey(addDays(parseDateKey(selectedDate), dayOffset)));
     cancelEntryEdit();
   }
 
@@ -393,28 +402,28 @@ export function NutritionSection({
               <NutritionMetric
                 isCompact={isCompact}
                 label="Calories"
-                target={target.dailyCalories}
+                target={targetForDate.dailyCalories}
                 unit=""
                 value={totals.calories}
               />
               <NutritionMetric
                 isCompact={isCompact}
                 label="Protein"
-                target={target.proteinGrams}
+                target={targetForDate.proteinGrams}
                 unit="g"
                 value={totals.proteinGrams}
               />
               <NutritionMetric
                 isCompact={isCompact}
                 label="Carbs"
-                target={target.carbsGrams}
+                target={targetForDate.carbsGrams}
                 unit="g"
                 value={totals.carbsGrams}
               />
               <NutritionMetric
                 isCompact={isCompact}
                 label="Fat"
-                target={target.fatGrams}
+                target={targetForDate.fatGrams}
                 unit="g"
                 value={totals.fatGrams}
               />
@@ -430,7 +439,7 @@ export function NutritionSection({
                 style={isCompact && styles.compactActionButton}
                 variant="secondary"
               >
-                Edit Targets
+                Edit Default
               </Button>
             </View>
 
@@ -574,80 +583,61 @@ function NutritionTargetModal({
   );
 
   return (
-    <Modal
-      animationType="slide"
-      onRequestClose={onClose}
-      presentationStyle="pageSheet"
+    <ModalShell
+      closeAccessibilityLabel="Close nutrition targets"
+      eyebrow="Nutrition"
+      onClose={onClose}
+      title="Edit Default Targets"
       visible={isVisible}
     >
-      <SafeAreaView edges={["top"]} style={styles.modalScreen}>
-        <View style={styles.modalHeader}>
-          <View style={styles.modalTitleGroup}>
-            <Text style={styles.modalEyebrow}>Nutrition</Text>
-            <Text numberOfLines={2} style={styles.modalTitle}>Edit Targets</Text>
-          </View>
-          <Pressable
-            accessibilityLabel="Close nutrition targets"
-            accessibilityRole="button"
-            hitSlop={8}
-            onPress={onClose}
-            style={styles.closeButton}
-          >
-            <Icon color={colors.text} name="x-mark" size={20} />
-          </Pressable>
-        </View>
-
-        <ScrollView contentContainerStyle={styles.modalContent} showsVerticalScrollIndicator={false}>
-          <View style={styles.inputGrid}>
-            <Input
-              editable={false}
-              keyboardType="numeric"
-              label="Calories"
-              onChangeText={() => undefined}
-              placeholder="2400"
-              value={String(calculateTargetDraftCalories(targetDraft))}
-            />
-            <Input
-              keyboardType="decimal-pad"
-              label="Protein"
-              onChangeText={(value) =>
-                setTargetDraft((currentDraft) => ({
-                  ...currentDraft,
-                  proteinGrams: sanitizeDecimalInput(value),
-                }))
-              }
-              placeholder="180"
-              value={targetDraft.proteinGrams}
-            />
-            <Input
-              keyboardType="decimal-pad"
-              label="Carbs"
-              onChangeText={(value) =>
-                setTargetDraft((currentDraft) => ({
-                  ...currentDraft,
-                  carbsGrams: sanitizeDecimalInput(value),
-                }))
-              }
-              placeholder="260"
-              value={targetDraft.carbsGrams}
-            />
-            <Input
-              keyboardType="decimal-pad"
-              label="Fat"
-              onChangeText={(value) =>
-                setTargetDraft((currentDraft) => ({
-                  ...currentDraft,
-                  fatGrams: sanitizeDecimalInput(value),
-                }))
-              }
-              placeholder="75"
-              value={targetDraft.fatGrams}
-            />
-          </View>
-          <Button icon="check" onPress={() => onSave(targetDraft)}>Save Targets</Button>
-        </ScrollView>
-      </SafeAreaView>
-    </Modal>
+      <View style={styles.inputGrid}>
+        <Input
+          editable={false}
+          keyboardType="numeric"
+          label="Calories"
+          onChangeText={() => undefined}
+          placeholder="2400"
+          value={String(calculateTargetDraftCalories(targetDraft))}
+        />
+        <Input
+          keyboardType="decimal-pad"
+          label="Protein"
+          onChangeText={(value) =>
+            setTargetDraft((currentDraft) => ({
+              ...currentDraft,
+              proteinGrams: sanitizeDecimalInput(value),
+            }))
+          }
+          placeholder="180"
+          value={targetDraft.proteinGrams}
+        />
+        <Input
+          keyboardType="decimal-pad"
+          label="Carbs"
+          onChangeText={(value) =>
+            setTargetDraft((currentDraft) => ({
+              ...currentDraft,
+              carbsGrams: sanitizeDecimalInput(value),
+            }))
+          }
+          placeholder="260"
+          value={targetDraft.carbsGrams}
+        />
+        <Input
+          keyboardType="decimal-pad"
+          label="Fat"
+          onChangeText={(value) =>
+            setTargetDraft((currentDraft) => ({
+              ...currentDraft,
+              fatGrams: sanitizeDecimalInput(value),
+            }))
+          }
+          placeholder="75"
+          value={targetDraft.fatGrams}
+        />
+      </View>
+      <Button icon="check" onPress={() => onSave(targetDraft)}>Save Targets</Button>
+    </ModalShell>
   );
 }
 
@@ -675,70 +665,51 @@ function NutritionEntryModal({
   const [isPresetPickerVisible, setIsPresetPickerVisible] = useState(false);
 
   return (
-    <Modal
-      animationType="slide"
-      onRequestClose={onClose}
-      presentationStyle="pageSheet"
+    <ModalShell
+      closeAccessibilityLabel="Close food editor"
+      eyebrow="Nutrition"
+      onClose={onClose}
+      title="Add Food"
       visible={mode !== null}
     >
-      <SafeAreaView edges={["top"]} style={styles.modalScreen}>
-        <View style={styles.modalHeader}>
-          <View style={styles.modalTitleGroup}>
-            <Text style={styles.modalEyebrow}>Nutrition</Text>
-            <Text numberOfLines={2} style={styles.modalTitle}>Add Food</Text>
-          </View>
-          <Pressable
-            accessibilityLabel="Close food editor"
-            accessibilityRole="button"
-            hitSlop={8}
-            onPress={onClose}
-            style={styles.closeButton}
-          >
-            <Icon color={colors.text} name="x-mark" size={20} />
-          </Pressable>
-        </View>
-
-        <ScrollView contentContainerStyle={styles.modalContent} showsVerticalScrollIndicator={false}>
-          <View style={styles.actionRow}>
-            <Button
-              disabled={mealPresets.length === 0}
-              icon="circle-stack"
-              onPress={() => setIsPresetPickerVisible((isVisible) => !isVisible)}
-              style={styles.compactActionButton}
-              variant="secondary"
+      <View style={styles.actionRow}>
+        <Button
+          disabled={mealPresets.length === 0}
+          icon="circle-stack"
+          onPress={() => setIsPresetPickerVisible((isVisible) => !isVisible)}
+          style={styles.compactActionButton}
+          variant="secondary"
+        >
+          Quick Add
+        </Button>
+      </View>
+      {isPresetPickerVisible ? (
+        <View style={styles.presetPicker}>
+          {mealPresets.map((preset) => (
+            <Pressable
+              accessibilityRole="button"
+              key={preset.id}
+              onPress={() => {
+                setIsPresetPickerVisible(false);
+                onQuickAdd(preset);
+              }}
+              style={styles.presetOption}
             >
-              Quick Add
-            </Button>
-          </View>
-          {isPresetPickerVisible ? (
-            <View style={styles.presetPicker}>
-              {mealPresets.map((preset) => (
-                <Pressable
-                  accessibilityRole="button"
-                  key={preset.id}
-                  onPress={() => {
-                    setIsPresetPickerVisible(false);
-                    onQuickAdd(preset);
-                  }}
-                  style={styles.presetOption}
-                >
-                  <Text style={styles.presetOptionTitle}>{preset.foodName}</Text>
-                  <Text style={styles.presetOptionMeta}>{preset.entry.calories} cal</Text>
-                </Pressable>
-              ))}
-            </View>
-          ) : null}
-          <NutritionEntryEditor
-            cancelLabel="Cancel"
-            draft={draft}
-            onChange={onChange}
-            onCancel={onClose}
-            onSave={onSubmit}
-            saveLabel="Add Food"
-          />
-        </ScrollView>
-      </SafeAreaView>
-    </Modal>
+              <Text style={styles.presetOptionTitle}>{preset.foodName}</Text>
+              <Text style={styles.presetOptionMeta}>{preset.entry.calories} cal</Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
+      <NutritionEntryEditor
+        cancelLabel="Cancel"
+        draft={draft}
+        onChange={onChange}
+        onCancel={onClose}
+        onSave={onSubmit}
+        saveLabel="Add Food"
+      />
+    </ModalShell>
   );
 }
 
@@ -829,25 +800,16 @@ function NutritionEntryItem({
   );
 }
 
-type NutritionTotals = {
-  calories: number;
-  carbsGrams: number;
-  fatGrams: number;
-  proteinGrams: number;
-};
-
-function addDays(date: Date, offset: number) {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate() + offset, 12);
-}
-
 function buildEntryDraft(
   formState: NutritionEntryEditorState,
   date: string,
 ): NutritionEntryDraft | null {
-  const carbsGrams = parseNonNegativeNumber(formState.carbsGrams);
-  const fatGrams = parseNonNegativeNumber(formState.fatGrams);
-  const proteinGrams = parseNonNegativeNumber(formState.proteinGrams);
-  const servingQuantity = parsePositiveNumber(formState.servingQuantity);
+  const carbsGrams = parseNonNegativeDecimal(formState.carbsGrams);
+  const fatGrams = parseNonNegativeDecimal(formState.fatGrams);
+  const proteinGrams = parseNonNegativeDecimal(formState.proteinGrams);
+  const servingQuantity = parsePositiveDecimal(formState.servingQuantity, {
+    emptyValue: 1,
+  });
   const foodName = formState.foodName.trim();
 
   if (
@@ -874,9 +836,9 @@ function buildEntryDraft(
 }
 
 function buildTargetUpdate(formState: NutritionTargetFormState): NutritionTargetUpdate | null {
-  const carbsGrams = parseNonNegativeNumber(formState.carbsGrams);
-  const fatGrams = parseNonNegativeNumber(formState.fatGrams);
-  const proteinGrams = parseNonNegativeNumber(formState.proteinGrams);
+  const carbsGrams = parseNonNegativeDecimal(formState.carbsGrams);
+  const fatGrams = parseNonNegativeDecimal(formState.fatGrams);
+  const proteinGrams = parseNonNegativeDecimal(formState.proteinGrams);
 
   if (
     carbsGrams === null ||
@@ -920,23 +882,6 @@ function getEntryFormState(entry: NutritionEntry): NutritionEntryEditorState {
   };
 }
 
-function getNutritionTotals(entries: NutritionEntry[]): NutritionTotals {
-  return entries.reduce<NutritionTotals>(
-    (totals, entry) => ({
-      calories: totals.calories + entry.calories,
-      carbsGrams: totals.carbsGrams + entry.carbsGrams,
-      fatGrams: totals.fatGrams + entry.fatGrams,
-      proteinGrams: totals.proteinGrams + entry.proteinGrams,
-    }),
-    {
-      calories: 0,
-      carbsGrams: 0,
-      fatGrams: 0,
-      proteinGrams: 0,
-    },
-  );
-}
-
 function getTargetFormState(target: NutritionTarget): NutritionTargetFormState {
   return {
     carbsGrams: String(target.carbsGrams),
@@ -954,22 +899,10 @@ function getTargetFormState(target: NutritionTarget): NutritionTargetFormState {
 
 function calculateTargetDraftCalories(formState: NutritionTargetFormState) {
   return calculateMacroCalories({
-    carbsGrams: parseNonNegativeNumber(formState.carbsGrams) ?? 0,
-    fatGrams: parseNonNegativeNumber(formState.fatGrams) ?? 0,
-    proteinGrams: parseNonNegativeNumber(formState.proteinGrams) ?? 0,
+    carbsGrams: parseNonNegativeDecimal(formState.carbsGrams) ?? 0,
+    fatGrams: parseNonNegativeDecimal(formState.fatGrams) ?? 0,
+    proteinGrams: parseNonNegativeDecimal(formState.proteinGrams) ?? 0,
   });
-}
-
-function calculateMacroCalories({
-  carbsGrams,
-  fatGrams,
-  proteinGrams,
-}: {
-  carbsGrams: number;
-  fatGrams: number;
-  proteinGrams: number;
-}) {
-  return Math.round(proteinGrams * 4 + carbsGrams * 4 + fatGrams * 9);
 }
 
 function formatMealType(mealType: MealType) {
@@ -977,7 +910,7 @@ function formatMealType(mealType: MealType) {
 }
 
 function formatNumber(value: number) {
-  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+  return formatNutritionNumber(value);
 }
 
 function formatSelectedDate(dateKey: string) {
@@ -987,62 +920,6 @@ function formatSelectedDate(dateKey: string) {
     day: "numeric",
     year: "numeric",
   }).format(parseDateKey(dateKey));
-}
-
-function getDateKeyFromDate(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-
-  return `${year}-${month}-${day}`;
-}
-
-function parseDateKey(dateKey: string) {
-  const [year, month, day] = dateKey.split("-").map(Number);
-  return new Date(year, month - 1, day, 12);
-}
-
-function parseNonNegativeNumber(value: string) {
-  const trimmedValue = value.trim();
-
-  if (!trimmedValue) {
-    return 0;
-  }
-
-  const parsedValue = Number(trimmedValue);
-
-  if (!Number.isFinite(parsedValue) || parsedValue < 0) {
-    return null;
-  }
-
-  return Math.round(parsedValue * 10) / 10;
-}
-
-function parsePositiveNumber(value: string) {
-  const trimmedValue = value.trim();
-
-  if (!trimmedValue) {
-    return 1;
-  }
-
-  const parsedValue = Number(trimmedValue);
-
-  if (!Number.isFinite(parsedValue) || parsedValue <= 0) {
-    return null;
-  }
-
-  return Math.round(parsedValue * 10) / 10;
-}
-
-function sanitizeDecimalInput(value: string) {
-  const cleanedValue = value.replaceAll(",", ".").replace(/[^\d.]/g, "");
-  const [wholeValue, ...decimalParts] = cleanedValue.split(".");
-
-  if (decimalParts.length === 0) {
-    return wholeValue;
-  }
-
-  return `${wholeValue}.${decimalParts.join("")}`;
 }
 
 function createStyles(colors: AppColors) {
@@ -1079,7 +956,7 @@ function createStyles(colors: AppColors) {
     color: colors.textMuted,
     fontSize: typography.sizes.caption,
     fontWeight: typography.weights.semibold,
-    letterSpacing: 0.7,
+    letterSpacing: 0,
     lineHeight: typography.lineHeights.caption,
     textTransform: "uppercase",
   },
@@ -1087,7 +964,7 @@ function createStyles(colors: AppColors) {
     color: colors.textMuted,
     fontSize: typography.sizes.caption,
     fontWeight: typography.weights.semibold,
-    letterSpacing: 0.7,
+    letterSpacing: 0,
     lineHeight: typography.lineHeights.caption,
     marginTop: spacing.sm,
     textTransform: "uppercase",
@@ -1132,56 +1009,6 @@ function createStyles(colors: AppColors) {
     backgroundColor: colors.primary,
     borderRadius: 999,
     height: 8,
-  },
-  modalScreen: {
-    backgroundColor: colors.background,
-    flex: 1,
-  },
-  modalHeader: {
-    alignItems: "center",
-    borderBottomColor: colors.border,
-    borderBottomWidth: 1,
-    flexDirection: "row",
-    gap: spacing.md,
-    justifyContent: "space-between",
-    paddingBottom: spacing.md,
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.md,
-  },
-  modalTitleGroup: {
-    flex: 1,
-    gap: 2,
-    minWidth: 0,
-  },
-  modalEyebrow: {
-    color: colors.textMuted,
-    fontSize: typography.sizes.caption,
-    fontWeight: typography.weights.semibold,
-    letterSpacing: 0.8,
-    lineHeight: typography.lineHeights.caption,
-    textTransform: "uppercase",
-  },
-  modalTitle: {
-    color: colors.text,
-    fontSize: 22,
-    fontWeight: typography.weights.bold,
-    lineHeight: 28,
-  },
-  modalContent: {
-    gap: spacing.lg,
-    paddingHorizontal: spacing.xl,
-    paddingBottom: spacing.xxxl,
-    paddingTop: spacing.lg,
-  },
-  closeButton: {
-    alignItems: "center",
-    backgroundColor: colors.surfaceElevated,
-    borderColor: colors.border,
-    borderRadius: 999,
-    borderWidth: 1,
-    height: 44,
-    justifyContent: "center",
-    width: 44,
   },
   mutedText: {
     color: colors.textMuted,

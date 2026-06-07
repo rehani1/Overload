@@ -1,9 +1,15 @@
 import { useSyncExternalStore } from "react";
 
-import { loadStoredJson, removeStoredJson, saveStoredJson } from "@/lib/storage";
+import {
+  loadAccountScopedJson,
+  removeAccountScopedJson,
+  saveAccountScopedJson,
+} from "@/lib/accountStorage";
 import type { Exercise } from "@/types/exercise";
 import type { UnitPreference } from "@/types/user";
 import type { Workout, WorkoutSet } from "@/types/workout";
+import { createId } from "@/utils/id";
+import { normalizeWorkoutSetUnits } from "@/utils/workout";
 
 const ACTIVE_WORKOUT_STORAGE_KEY = "overload.activeWorkout.v1";
 
@@ -41,12 +47,10 @@ let state: ActiveWorkoutState = {
   isHydrated: false,
   activeWorkout: null,
 };
+let activeAccountId: string | null = null;
+let activeAccountVersion = 0;
 
 const listeners = new Set<() => void>();
-
-function createId(prefix: string) {
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
 
 function getDefaultTitle() {
   return `Workout ${new Date().toLocaleDateString()}`;
@@ -77,6 +81,7 @@ function emit(nextState: ActiveWorkoutState) {
 }
 
 function emitAndPersist(nextState: ActiveWorkoutState) {
+  activeAccountVersion += 1;
   emit(nextState);
   void saveActiveWorkoutState(nextState);
 }
@@ -257,16 +262,7 @@ function renumberSets(sets: WorkoutSet[]) {
 }
 
 function normalizeWorkout(workout: Workout): Workout {
-  return {
-    ...workout,
-    exercises: workout.exercises.map((workoutExercise) => ({
-      ...workoutExercise,
-      sets: workoutExercise.sets.map((set) => ({
-        ...set,
-        weightUnit: set.weightUnit ?? "lb",
-      })),
-    })),
-  };
+  return normalizeWorkoutSetUnits(workout);
 }
 
 function buildStore(snapshot: ActiveWorkoutState): ActiveWorkoutStore {
@@ -285,28 +281,79 @@ function buildStore(snapshot: ActiveWorkoutState): ActiveWorkoutStore {
   };
 }
 
-async function hydrateActiveWorkoutState() {
-  const storedState = await loadStoredJson<ActiveWorkoutState>(ACTIVE_WORKOUT_STORAGE_KEY);
+export function setActiveWorkoutStoreAccount(accountId: string | null) {
+  if (activeAccountId === accountId && state.isHydrated) {
+    return;
+  }
 
-  emit({
-    activeWorkout: storedState?.activeWorkout ? normalizeWorkout(storedState.activeWorkout) : null,
+  activeAccountId = accountId;
+  activeAccountVersion += 1;
+
+  if (!accountId) {
+    emit(createEmptyActiveWorkoutState(true));
+    return;
+  }
+
+  emit(createEmptyActiveWorkoutState(false));
+  void hydrateActiveWorkoutState(accountId, activeAccountVersion);
+}
+
+async function hydrateActiveWorkoutState(accountId: string, accountVersion: number) {
+  const storedState = await loadAccountScopedJson<ActiveWorkoutState>(
+    ACTIVE_WORKOUT_STORAGE_KEY,
+    accountId,
+  );
+  const nextState: ActiveWorkoutState = {
+    activeWorkout: storedState?.activeWorkout
+      ? normalizeWorkout(storedState.activeWorkout)
+      : null,
+    isHydrated: true,
+  };
+
+  if (activeAccountId !== accountId || activeAccountVersion !== accountVersion) {
+    return;
+  }
+
+  emit(nextState);
+
+  if (nextState.activeWorkout) {
+    void saveActiveWorkoutStateForAccount(accountId, nextState);
+  } else {
+    void removeAccountScopedJson(ACTIVE_WORKOUT_STORAGE_KEY, accountId);
+  }
+}
+
+async function saveActiveWorkoutState(nextState: ActiveWorkoutState) {
+  const accountId = activeAccountId;
+
+  if (!accountId) {
+    return;
+  }
+
+  if (nextState.activeWorkout) {
+    await saveActiveWorkoutStateForAccount(accountId, nextState);
+    return;
+  }
+
+  await removeAccountScopedJson(ACTIVE_WORKOUT_STORAGE_KEY, accountId);
+}
+
+async function saveActiveWorkoutStateForAccount(
+  accountId: string,
+  nextState: ActiveWorkoutState,
+) {
+  await saveAccountScopedJson<ActiveWorkoutState>(ACTIVE_WORKOUT_STORAGE_KEY, accountId, {
+    activeWorkout: nextState.activeWorkout,
     isHydrated: true,
   });
 }
 
-async function saveActiveWorkoutState(nextState: ActiveWorkoutState) {
-  if (nextState.activeWorkout) {
-    await saveStoredJson<ActiveWorkoutState>(ACTIVE_WORKOUT_STORAGE_KEY, {
-      activeWorkout: nextState.activeWorkout,
-      isHydrated: true,
-    });
-    return;
-  }
-
-  await removeStoredJson(ACTIVE_WORKOUT_STORAGE_KEY);
+function createEmptyActiveWorkoutState(isHydrated: boolean): ActiveWorkoutState {
+  return {
+    activeWorkout: null,
+    isHydrated,
+  };
 }
-
-void hydrateActiveWorkoutState();
 
 export function useActiveWorkoutStore() {
   const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);

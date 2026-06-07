@@ -3,14 +3,21 @@
     "name": "Overload",
     "slug": "overload",
     "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "overload",
     "userInterfaceStyle": "automatic",
     "ios": {
+      "bundleIdentifier": "com.rehanislam.overload",
+      "buildNumber": "1.0.0",
       "icon": "./assets/expo.icon"
     },
     "android": {
+      "package": "com.rehanislam.overload",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#EEF8FB",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
