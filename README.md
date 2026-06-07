@@ -99,6 +99,7 @@ Current API surface:
 - `GET/POST /api/presets/workouts`, `PATCH/DELETE /api/presets/workouts/{id}`
 - `GET/POST /api/presets/meals`, `PATCH/DELETE /api/presets/meals/{id}`
 - `GET/POST /api/programs`, `GET/PATCH/DELETE /api/programs/{id}`
+- `GET /api/analytics/summary`
 
 ## Web Commands
 
