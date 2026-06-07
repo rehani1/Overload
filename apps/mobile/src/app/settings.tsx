@@ -40,7 +40,7 @@ export default function SettingsScreen() {
           title="Settings"
           subtitle="Manage app preferences, sync state, and account actions."
           action={
-            <Button onPress={handleBack} variant="secondary">
+            <Button icon="arrow-left" onPress={handleBack} variant="secondary">
               Back
             </Button>
           }
@@ -68,7 +68,7 @@ export default function SettingsScreen() {
             This keeps the demo profile local. Real authentication can plug in later without changing
             the mobile logging flow.
           </Text>
-          <Button onPress={handleLogout} variant="secondary">
+          <Button icon="arrow-right-on-rectangle" onPress={handleLogout} variant="secondary">
             Log Out
           </Button>
         </Card>

@@ -9,6 +9,7 @@ import {
 } from "@/api/workoutApi";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
+import { Icon } from "@/components/Icon";
 import type { AppColors } from "@/constants/colors";
 import { spacing } from "@/constants/spacing";
 import { typography } from "@/constants/typography";
@@ -68,7 +69,7 @@ export function WorkoutCalendar({ onDatePress }: WorkoutCalendarProps) {
               onPress={() => handleMonthChange(-1)}
               style={({ pressed }) => [styles.monthNavButton, pressed && styles.pressed]}
             >
-              <Text style={styles.monthNavText}>{"<"}</Text>
+              <Icon color={colors.text} name="chevron-left" size={18} />
             </Pressable>
             <Pressable
               accessibilityLabel="Next month"
@@ -76,7 +77,7 @@ export function WorkoutCalendar({ onDatePress }: WorkoutCalendarProps) {
               onPress={() => handleMonthChange(1)}
               style={({ pressed }) => [styles.monthNavButton, pressed && styles.pressed]}
             >
-              <Text style={styles.monthNavText}>{">"}</Text>
+              <Icon color={colors.text} name="chevron-right" size={18} />
             </Pressable>
           </View>
         </View>
@@ -375,7 +376,7 @@ export function WorkoutDateDetails({ selectedDateKey }: WorkoutDateDetailsProps)
           </Text>
         ) : null}
         <View style={styles.actionRow}>
-          <Button onPress={handleStartAdd}>Add Workout</Button>
+          <Button icon="plus" onPress={handleStartAdd}>Add Workout</Button>
         </View>
         {selectedWorkouts.length === 0 ? (
           <View style={styles.emptyInline}>
@@ -414,6 +415,7 @@ export function WorkoutDateDetails({ selectedDateKey }: WorkoutDateDetailsProps)
               onPress={handleCancelEdit}
               style={({ pressed }) => [styles.closeButton, pressed && styles.pressed]}
             >
+              <Icon color={colors.text} name="x-mark" size={18} />
               <Text style={styles.closeButtonText}>Close</Text>
             </Pressable>
           </View>
@@ -443,10 +445,18 @@ export function WorkoutDateDetails({ selectedDateKey }: WorkoutDateDetailsProps)
                       This removes the workout locally and syncs the delete when the backend is configured.
                     </Text>
                     <View style={styles.actionRow}>
-                      <Button onPress={() => handleConfirmDelete(editingWorkout)} variant="danger">
+                      <Button
+                        icon="trash"
+                        onPress={() => handleConfirmDelete(editingWorkout)}
+                        variant="danger"
+                      >
                         Confirm Delete
                       </Button>
-                      <Button onPress={() => setIsDeletePending(false)} variant="secondary">
+                      <Button
+                        icon="arrow-left"
+                        onPress={() => setIsDeletePending(false)}
+                        variant="secondary"
+                      >
                         Keep Workout
                       </Button>
                     </View>
@@ -486,7 +496,7 @@ function WorkoutCalendarItem({
       </Text>
 
       <View style={styles.actionRow}>
-        <Button onPress={onStartEdit} variant="secondary">
+        <Button icon="pencil-square" onPress={onStartEdit} variant="secondary">
           Modify
         </Button>
       </View>
@@ -743,12 +753,6 @@ function createStyles(colors: AppColors) {
     height: 40,
     justifyContent: "center",
     width: 40,
-  },
-  monthNavText: {
-    color: colors.text,
-    fontSize: typography.sizes.subtitle,
-    fontWeight: typography.weights.semibold,
-    lineHeight: typography.lineHeights.subtitle,
   },
   calendarLegend: {
     flexDirection: "row",

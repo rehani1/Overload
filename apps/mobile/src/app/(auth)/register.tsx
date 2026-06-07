@@ -68,8 +68,8 @@ export default function RegisterScreen() {
         </Card>
 
         <View style={styles.actionBlock}>
-          <Button onPress={handleRegister}>Create Account</Button>
-          <Button onPress={() => router.replace("/login")} variant="secondary">
+          <Button icon="plus" onPress={handleRegister}>Create Account</Button>
+          <Button icon="arrow-left" onPress={() => router.replace("/login")} variant="secondary">
             Back to Login
           </Button>
         </View>

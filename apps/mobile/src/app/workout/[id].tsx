@@ -30,7 +30,7 @@ export default function WorkoutDetailScreen() {
     }
 
     startWorkout(duplicatedWorkout);
-    router.push("../workout/active");
+    router.push("/workout/active");
   }
 
   if (!workout) {
@@ -53,7 +53,9 @@ export default function WorkoutDetailScreen() {
           <Text style={styles.heroSubtitle}>{formatWorkoutDate(workout.date)}</Text>
         </View>
 
-        <Button onPress={handleDuplicateWorkout}>Duplicate Workout</Button>
+        <Button icon="circle-stack" onPress={handleDuplicateWorkout}>
+          Duplicate Workout
+        </Button>
 
         {workout.exercises.map((workoutExercise) => (
           <Card key={workoutExercise.id}>

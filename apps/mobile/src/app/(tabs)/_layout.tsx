@@ -1,5 +1,6 @@
 import { Tabs } from "expo-router";
 
+import { Icon } from "@/components/Icon";
 import { typography } from "@/constants/typography";
 import { useThemeColors } from "@/theme/ThemeProvider";
 
@@ -26,8 +27,20 @@ export default function TabLayout() {
         },
       }}
     >
-      <Tabs.Screen name="home" options={{ title: "Home" }} />
-      <Tabs.Screen name="profile" options={{ title: "Profile" }} />
+      <Tabs.Screen
+        name="home"
+        options={{
+          title: "Home",
+          tabBarIcon: ({ color, size }) => <Icon color={String(color)} name="home" size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: "Profile",
+          tabBarIcon: ({ color, size }) => <Icon color={String(color)} name="user" size={size} />,
+        }}
+      />
     </Tabs>
   );
 }

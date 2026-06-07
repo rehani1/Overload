@@ -71,7 +71,7 @@ export default function ActiveWorkoutScreen() {
     <Screen>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.topAction}>
-          <Button onPress={handleBack} variant="secondary">
+          <Button icon="arrow-left" onPress={handleBack} variant="secondary">
             Back
           </Button>
         </View>
@@ -93,10 +93,18 @@ export default function ActiveWorkoutScreen() {
           />
 
           <View style={styles.actionRow}>
-            <Button onPress={() => setIsPickerVisible((current) => !current)} variant="secondary">
+            <Button
+              icon={isPickerVisible ? "x-mark" : "plus"}
+              onPress={() => setIsPickerVisible((current) => !current)}
+              variant="secondary"
+            >
               {isPickerVisible ? "Hide Exercises" : "Add Exercise"}
             </Button>
-            <Button disabled={activeWorkout.exercises.length === 0} onPress={handleFinishWorkout}>
+            <Button
+              disabled={activeWorkout.exercises.length === 0}
+              icon="check"
+              onPress={handleFinishWorkout}
+            >
               Finish Workout
             </Button>
           </View>
@@ -147,6 +155,7 @@ export default function ActiveWorkoutScreen() {
 
                 <View style={styles.actionRow}>
                   <Button
+                    icon="plus"
                     onPress={() =>
                       addSet(workoutExercise.id, {
                         reps: 8,
@@ -157,7 +166,11 @@ export default function ActiveWorkoutScreen() {
                   >
                     Add Set
                   </Button>
-                  <Button onPress={() => removeExercise(workoutExercise.id)} variant="danger">
+                  <Button
+                    icon="trash"
+                    onPress={() => removeExercise(workoutExercise.id)}
+                    variant="danger"
+                  >
                     Remove
                   </Button>
                 </View>
@@ -203,7 +216,7 @@ function WorkoutSetRow({ set, onUpdate, onRemove }: WorkoutSetRowProps) {
           value={set.rpe === undefined ? "" : String(set.rpe)}
         />
       </View>
-      <Button onPress={onRemove} variant="danger">
+      <Button icon="trash" onPress={onRemove} variant="danger">
         Delete Set
       </Button>
     </View>

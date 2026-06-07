@@ -59,7 +59,9 @@ export default function LoginScreen() {
         </Card>
 
         <View style={styles.actionBlock}>
-          <Button onPress={handleLogin}>Log In</Button>
+          <Button icon="arrow-right-on-rectangle" onPress={handleLogin}>
+            Log In
+          </Button>
         </View>
 
         <View style={styles.footerCard}>

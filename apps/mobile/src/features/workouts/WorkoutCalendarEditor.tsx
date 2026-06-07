@@ -171,7 +171,11 @@ export function WorkoutCalendarEditor({
       />
 
       <View style={styles.actionRow}>
-        <Button onPress={() => setIsPickerVisible((current) => !current)} variant="secondary">
+        <Button
+          icon={isPickerVisible ? "x-mark" : "plus"}
+          onPress={() => setIsPickerVisible((current) => !current)}
+          variant="secondary"
+        >
           {isPickerVisible ? "Hide Exercises" : "Add Exercise"}
         </Button>
       </View>
@@ -196,12 +200,12 @@ export function WorkoutCalendarEditor({
       )}
 
       <View style={styles.actionRow}>
-        <Button onPress={onSave}>{saveLabel}</Button>
-        <Button onPress={onCancel} variant="secondary">
+        <Button icon="check" onPress={onSave}>{saveLabel}</Button>
+        <Button icon="x-mark" onPress={onCancel} variant="secondary">
           Cancel
         </Button>
         {onDelete ? (
-          <Button onPress={onDelete} variant="danger">
+          <Button icon="trash" onPress={onDelete} variant="danger">
             Delete Workout
           </Button>
         ) : null}
@@ -251,10 +255,10 @@ function WorkoutExerciseEditor({
       )}
 
       <View style={styles.actionRow}>
-        <Button onPress={onAddSet} variant="secondary">
+        <Button icon="plus" onPress={onAddSet} variant="secondary">
           Add Set
         </Button>
-        <Button onPress={onRemoveExercise} variant="danger">
+        <Button icon="trash" onPress={onRemoveExercise} variant="danger">
           Remove Exercise
         </Button>
       </View>
@@ -293,7 +297,7 @@ function SetEditor({ onRemove, onUpdate, set }: SetEditorProps) {
         onChangeText={(value) => onUpdate({ rpe: parseOptionalNumber(value) })}
         value={set.rpe === undefined ? "" : String(set.rpe)}
       />
-      <Button onPress={onRemove} variant="danger">
+      <Button icon="trash" onPress={onRemove} variant="danger">
         Delete Set
       </Button>
     </View>

@@ -26,7 +26,7 @@ export default function ProfileScreen() {
           title="Profile"
           subtitle="Account basics for the mobile logging companion."
           action={
-            <Button onPress={() => router.push("/settings")} variant="secondary">
+            <Button icon="cog-6-tooth" onPress={() => router.push("/settings")} variant="secondary">
               Settings
             </Button>
           }

@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { Button } from "@/components/Button";
+import { Icon } from "@/components/Icon";
 import { Screen } from "@/components/Screen";
 import type { AppColors } from "@/constants/colors";
 import { spacing } from "@/constants/spacing";
@@ -30,16 +31,16 @@ export default function HomeScreen() {
           </View>
 
           <View style={styles.heroActions}>
-            <Button onPress={() => router.push("../workout/active")} variant="secondary">
+            <Button icon="play" onPress={() => router.push("/workout/active")} variant="secondary">
               Start Workout
             </Button>
             <View style={styles.heroPillRow}>
               <View style={styles.heroPill}>
-                <View style={[styles.legendDot, styles.workoutDot]} />
+                <Icon color={colors.workout} name="fire" size={16} />
                 <Text style={styles.heroPillText}>Workout</Text>
               </View>
               <View style={styles.heroPill}>
-                <View style={[styles.legendDot, styles.nutritionDot]} />
+                <Icon color={colors.nutrition} name="cake" size={16} />
                 <Text style={styles.heroPillText}>Nutrition</Text>
               </View>
             </View>
@@ -88,6 +89,7 @@ function DateDetailsModal({ onClose, selectedDateKey }: DateDetailsModalProps) {
             onPress={onClose}
             style={({ pressed }) => [styles.closeButton, pressed && styles.pressed]}
           >
+            <Icon color={colors.text} name="x-mark" size={18} />
             <Text style={styles.closeButtonText}>Close</Text>
           </Pressable>
         </View>
@@ -184,17 +186,6 @@ function createStyles(colors: AppColors) {
     fontSize: typography.sizes.caption,
     fontWeight: typography.weights.semibold,
     lineHeight: typography.lineHeights.caption,
-  },
-  legendDot: {
-    borderRadius: 4,
-    height: 8,
-    width: 8,
-  },
-  workoutDot: {
-    backgroundColor: colors.workout,
-  },
-  nutritionDot: {
-    backgroundColor: colors.nutrition,
   },
   modalScreen: {
     backgroundColor: colors.background,

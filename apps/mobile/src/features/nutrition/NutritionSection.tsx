@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { EmptyState } from "@/components/EmptyState";
+import { Icon } from "@/components/Icon";
 import { Input } from "@/components/Input";
 import type { AppColors } from "@/constants/colors";
 import { spacing } from "@/constants/spacing";
@@ -310,10 +311,15 @@ export function NutritionSection({
             {showDateControls ? (
               <View style={styles.actionRow}>
                 <Text style={styles.sectionLabel}>{formatSelectedDate(selectedDate)}</Text>
-                <Button onPress={() => handleDateChange(-1)} variant="secondary">
+                <Button icon="chevron-left" onPress={() => handleDateChange(-1)} variant="secondary">
                   Previous Day
                 </Button>
-                <Button onPress={() => handleDateChange(1)} variant="secondary">
+                <Button
+                  icon="chevron-right"
+                  iconPosition="right"
+                  onPress={() => handleDateChange(1)}
+                  variant="secondary"
+                >
                   Next Day
                 </Button>
               </View>
@@ -347,8 +353,8 @@ export function NutritionSection({
             </View>
 
             <View style={styles.actionRow}>
-              <Button onPress={openAddEntryModal}>Add Food</Button>
-              <Button onPress={() => setIsTargetModalVisible(true)} variant="secondary">
+              <Button icon="plus" onPress={openAddEntryModal}>Add Food</Button>
+              <Button icon="pencil-square" onPress={() => setIsTargetModalVisible(true)} variant="secondary">
                 Edit Targets
               </Button>
             </View>
@@ -503,6 +509,7 @@ function NutritionTargetModal({
             onPress={onClose}
             style={({ pressed }) => [styles.closeButton, pressed && styles.pressed]}
           >
+            <Icon color={colors.text} name="x-mark" size={18} />
             <Text style={styles.closeButtonText}>Close</Text>
           </Pressable>
         </View>
@@ -558,7 +565,7 @@ function NutritionTargetModal({
               value={targetDraft.fatGrams}
             />
           </View>
-          <Button onPress={() => onSave(targetDraft)}>Save Targets</Button>
+          <Button icon="check" onPress={() => onSave(targetDraft)}>Save Targets</Button>
         </ScrollView>
       </View>
     </Modal>
@@ -611,6 +618,7 @@ function NutritionEntryModal({
             onPress={onClose}
             style={({ pressed }) => [styles.closeButton, pressed && styles.pressed]}
           >
+            <Icon color={colors.text} name="x-mark" size={18} />
             <Text style={styles.closeButtonText}>Close</Text>
           </Pressable>
         </View>
@@ -624,7 +632,7 @@ function NutritionEntryModal({
           />
 
           {isEditing && onDelete ? (
-            <Button onPress={onDelete} variant="danger">
+            <Button icon="trash" onPress={onDelete} variant="danger">
               Delete Food
             </Button>
           ) : null}
@@ -720,7 +728,7 @@ function NutritionEntryForm({
         value={draft.notes}
       />
 
-      <Button onPress={onSubmit}>{submitLabel}</Button>
+      <Button icon="check" onPress={onSubmit}>{submitLabel}</Button>
     </View>
   );
 }
@@ -757,7 +765,7 @@ function NutritionEntryItem({
       {entry.notes ? <Text style={styles.mutedText}>{entry.notes}</Text> : null}
 
       <View style={styles.actionRow}>
-        <Button onPress={onStartEdit} variant="secondary">
+        <Button icon="pencil-square" onPress={onStartEdit} variant="secondary">
           Edit
         </Button>
       </View>

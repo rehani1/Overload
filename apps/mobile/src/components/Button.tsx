@@ -3,6 +3,7 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  View,
   type GestureResponderEvent,
   type StyleProp,
   type ViewStyle,
@@ -12,6 +13,7 @@ import type { AppColors } from "@/constants/colors";
 import { spacing } from "@/constants/spacing";
 import { typography } from "@/constants/typography";
 import { useThemeColors } from "@/theme/ThemeProvider";
+import { Icon, type IconName } from "@/components/Icon";
 
 type ButtonVariant = "primary" | "secondary" | "danger";
 
@@ -20,6 +22,8 @@ type ButtonProps = {
   onPress?: (event: GestureResponderEvent) => void;
   variant?: ButtonVariant;
   disabled?: boolean;
+  icon?: IconName;
+  iconPosition?: "left" | "right";
   style?: StyleProp<ViewStyle>;
 };
 
@@ -28,12 +32,15 @@ export function Button({
   onPress,
   variant = "primary",
   disabled = false,
+  icon,
+  iconPosition = "left",
   style,
 }: ButtonProps) {
   const colors = useThemeColors();
   const styles = createStyles(colors);
   const variantStyles = getVariantStyles(colors);
   const selectedVariant = variantStyles[variant];
+  const iconElement = icon ? <Icon color={selectedVariant.text.color} name={icon} size={18} /> : null;
 
   return (
     <Pressable
@@ -48,7 +55,11 @@ export function Button({
         style,
       ]}
     >
-      <Text style={[styles.text, selectedVariant.text]}>{children}</Text>
+      <View style={styles.content}>
+        {iconPosition === "left" ? iconElement : null}
+        <Text style={[styles.text, selectedVariant.text]}>{children}</Text>
+        {iconPosition === "right" ? iconElement : null}
+      </View>
     </Pressable>
   );
 }
@@ -96,6 +107,12 @@ function createStyles(colors: AppColors) {
       paddingHorizontal: spacing.xl,
       paddingVertical: spacing.md,
       boxShadow: `0px 8px 18px ${colors.shadow}`,
+    },
+    content: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: spacing.sm,
+      justifyContent: "center",
     },
     text: {
       fontSize: typography.sizes.small,
