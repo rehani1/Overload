@@ -21,10 +21,12 @@ import { Icon } from "@/components/Icon";
 import type { AppColors } from "@/constants/colors";
 import { spacing } from "@/constants/spacing";
 import { typography } from "@/constants/typography";
+import { useAuthStore } from "@/store/useAuthStore";
 import { useNutritionStore } from "@/store/useNutritionStore";
 import { useWorkoutHistoryStore } from "@/store/useWorkoutHistoryStore";
 import { useThemeColors } from "@/theme/ThemeProvider";
 import type { NutritionEntry } from "@/types/nutrition";
+import type { UnitPreference } from "@/types/user";
 import type { Workout } from "@/types/workout";
 
 import { WorkoutEditor } from "./WorkoutEditor";
@@ -285,6 +287,7 @@ export function WorkoutDateDetails({
   isCompact = false,
   selectedDateKey,
 }: WorkoutDateDetailsProps) {
+  const { user } = useAuthStore();
   const {
     addCompletedWorkout,
     deleteWorkout,
@@ -306,6 +309,7 @@ export function WorkoutDateDetails({
   });
   const workoutsByDate = groupWorkoutsByDate(completedWorkouts);
   const selectedWorkouts = workoutsByDate.get(selectedDateKey) ?? [];
+  const unitPreference = user?.unitPreference ?? "lb";
 
   function handleCancelEdit() {
     setEditingWorkout(null);
@@ -513,6 +517,7 @@ export function WorkoutDateDetails({
                 }}
                 onStartEdit={() => handleStartEdit(workout)}
                 onUpdateDraftWorkout={handleUpdateDraftWorkout}
+                unitPreference={unitPreference}
                 workout={workout}
               />
             ))}
@@ -550,6 +555,7 @@ export function WorkoutDateDetails({
                 onSave={handleCreateWorkout}
                 onUpdateWorkout={handleUpdateDraftWorkout}
                 saveLabel="Create Workout"
+                unitPreference={unitPreference}
                 workout={draftWorkout}
               />
             ) : null}
@@ -572,6 +578,7 @@ type WorkoutCalendarItemProps = {
   onSave: () => void;
   onStartEdit: () => void;
   onUpdateDraftWorkout: (updater: (workout: Workout) => Workout) => void;
+  unitPreference: UnitPreference;
   workout: Workout;
 };
 
@@ -587,6 +594,7 @@ function WorkoutCalendarItem({
   onSave,
   onStartEdit,
   onUpdateDraftWorkout,
+  unitPreference,
   workout,
 }: WorkoutCalendarItemProps) {
   const colors = useThemeColors();
@@ -628,6 +636,7 @@ function WorkoutCalendarItem({
           onRequestDelete={onRequestDelete}
           onSave={onSave}
           onUpdateWorkout={onUpdateDraftWorkout}
+          unitPreference={unitPreference}
           workout={draftWorkout}
         />
       ) : null}

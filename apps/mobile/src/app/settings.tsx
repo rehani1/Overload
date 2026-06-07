@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { ScrollView, StyleSheet, Switch, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
@@ -11,9 +11,10 @@ import { typography } from "@/constants/typography";
 import { mockUser } from "@/features/profile/mockUser";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useAppTheme, useThemeColors } from "@/theme/ThemeProvider";
+import type { UnitPreference } from "@/types/user";
 
 export default function SettingsScreen() {
-  const { logout, user } = useAuthStore();
+  const { logout, updateUser, user } = useAuthStore();
   const { isDark, setThemePreference } = useAppTheme();
   const colors = useThemeColors();
   const styles = createStyles(colors);
@@ -46,7 +47,10 @@ export default function SettingsScreen() {
         />
 
         <Card title="Preferences">
-          <SettingsRow label="Units" value={profileUser.unitPreference.toUpperCase()} />
+          <SettingsUnitRow
+            onValueChange={(unitPreference) => updateUser({ unitPreference })}
+            value={profileUser.unitPreference}
+          />
           <SettingsToggleRow
             helperText="Override system appearance."
             label="Dark mode"
@@ -67,6 +71,45 @@ export default function SettingsScreen() {
         </Card>
       </ScrollView>
     </Screen>
+  );
+}
+
+type SettingsUnitRowProps = {
+  onValueChange: (value: UnitPreference) => void;
+  value: UnitPreference;
+};
+
+function SettingsUnitRow({ onValueChange, value }: SettingsUnitRowProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
+  const units: UnitPreference[] = ["lb", "kg"];
+
+  return (
+    <View style={styles.settingsUnitRow}>
+      <View style={styles.settingsToggleCopy}>
+        <Text style={styles.bodyText}>Units</Text>
+        <Text style={styles.mutedText}>Used for workout weight fields.</Text>
+      </View>
+
+      <View style={styles.unitControl}>
+        {units.map((unit) => {
+          const isSelected = value === unit;
+
+          return (
+            <Pressable
+              accessibilityRole="button"
+              key={unit}
+              onPress={() => onValueChange(unit)}
+              style={[styles.unitOption, isSelected && styles.unitOptionSelected]}
+            >
+              <Text style={[styles.unitOptionText, isSelected && styles.unitOptionTextSelected]}>
+                {unit.toUpperCase()}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
   );
 }
 
@@ -149,9 +192,46 @@ function createStyles(colors: AppColors) {
       justifyContent: "space-between",
       paddingVertical: spacing.md,
     },
+    settingsUnitRow: {
+      alignItems: "center",
+      borderBottomColor: colors.border,
+      borderBottomWidth: 1,
+      flexDirection: "row",
+      gap: spacing.md,
+      justifyContent: "space-between",
+      paddingVertical: spacing.md,
+    },
     settingsToggleCopy: {
       flex: 1,
       gap: spacing.sm,
+    },
+    unitControl: {
+      backgroundColor: colors.surfaceMuted,
+      borderColor: colors.border,
+      borderRadius: 999,
+      borderWidth: 1,
+      flexDirection: "row",
+      gap: spacing.xs,
+      padding: spacing.xs,
+    },
+    unitOption: {
+      borderRadius: 999,
+      minWidth: 52,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+    },
+    unitOptionSelected: {
+      backgroundColor: colors.primary,
+    },
+    unitOptionText: {
+      color: colors.textMuted,
+      fontSize: typography.sizes.caption,
+      fontWeight: typography.weights.semibold,
+      lineHeight: typography.lineHeights.caption,
+      textAlign: "center",
+    },
+    unitOptionTextSelected: {
+      color: colors.onPrimary,
     },
   });
 }

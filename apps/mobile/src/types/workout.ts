@@ -1,4 +1,5 @@
 import type { Exercise } from "./exercise";
+import type { UnitPreference } from "./user";
 
 export type WorkoutStatus = "active" | "completed";
 
@@ -7,6 +8,7 @@ export type WorkoutSet = {
   setNumber: number;
   reps: number;
   weight: number;
+  weightUnit?: UnitPreference;
   rpe?: number;
   isWarmup?: boolean;
 };

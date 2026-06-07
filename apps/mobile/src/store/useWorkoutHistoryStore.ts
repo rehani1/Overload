@@ -24,7 +24,7 @@ type WorkoutHistoryUpdate = Partial<Pick<Workout, "date" | "exercises" | "notes"
 
 let state: WorkoutHistoryState = {
   isHydrated: false,
-  workouts: mockWorkouts,
+  workouts: mockWorkouts.map(normalizeWorkout),
 };
 
 const listeners = new Set<() => void>();
@@ -57,7 +57,7 @@ function addCompletedWorkout(workout: Workout) {
     isHydrated: true,
     workouts: [
       {
-        ...workout,
+        ...normalizeWorkout(workout),
         status: "completed",
       },
       ...state.workouts,
@@ -79,9 +79,9 @@ function restoreWorkout(workout: Workout) {
     isHydrated: true,
     workouts: existingWorkout
       ? state.workouts.map((currentWorkout) =>
-          currentWorkout.id === workout.id ? workout : currentWorkout,
+          currentWorkout.id === workout.id ? normalizeWorkout(workout) : currentWorkout,
         )
-      : [workout, ...state.workouts],
+      : [normalizeWorkout(workout), ...state.workouts],
   });
 }
 
@@ -96,15 +96,16 @@ function updateWorkout(workoutId: string, updates: WorkoutHistoryUpdate) {
     ...workout,
     ...updates,
   };
+  const normalizedWorkout = normalizeWorkout(updatedWorkout);
 
   emitAndPersist({
     isHydrated: true,
     workouts: state.workouts.map((currentWorkout) =>
-      currentWorkout.id === workoutId ? updatedWorkout : currentWorkout,
+      currentWorkout.id === workoutId ? normalizedWorkout : currentWorkout,
     ),
   });
 
-  return updatedWorkout;
+  return normalizedWorkout;
 }
 
 function duplicateWorkout(workoutId: string): Workout | null {
@@ -114,7 +115,7 @@ function duplicateWorkout(workoutId: string): Workout | null {
     return null;
   }
 
-  return {
+  return normalizeWorkout({
     ...workout,
     id: createId("workout"),
     title: `${workout.title} Copy`,
@@ -129,7 +130,7 @@ function duplicateWorkout(workoutId: string): Workout | null {
         setNumber: index + 1,
       })),
     })),
-  };
+  });
 }
 
 function getWorkoutById(workoutId: string) {
@@ -141,7 +142,7 @@ async function hydrateWorkoutHistoryState() {
 
   emit({
     isHydrated: true,
-    workouts: storedState?.workouts ?? mockWorkouts,
+    workouts: (storedState?.workouts ?? mockWorkouts).map(normalizeWorkout),
   });
 }
 
@@ -153,6 +154,19 @@ async function saveWorkoutHistoryState(nextState: WorkoutHistoryState) {
 }
 
 void hydrateWorkoutHistoryState();
+
+function normalizeWorkout(workout: Workout): Workout {
+  return {
+    ...workout,
+    exercises: workout.exercises.map((workoutExercise) => ({
+      ...workoutExercise,
+      sets: workoutExercise.sets.map((set) => ({
+        ...set,
+        weightUnit: set.weightUnit ?? "lb",
+      })),
+    })),
+  };
+}
 
 function buildStore(snapshot: WorkoutHistoryState): WorkoutHistoryStore {
   return {

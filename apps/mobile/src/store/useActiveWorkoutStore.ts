@@ -2,6 +2,7 @@ import { useSyncExternalStore } from "react";
 
 import { loadStoredJson, removeStoredJson, saveStoredJson } from "@/lib/storage";
 import type { Exercise } from "@/types/exercise";
+import type { UnitPreference } from "@/types/user";
 import type { Workout, WorkoutSet } from "@/types/workout";
 
 const ACTIVE_WORKOUT_STORAGE_KEY = "overload.activeWorkout.v1";
@@ -14,6 +15,7 @@ type ActiveWorkoutState = {
 type SetDraft = {
   reps?: number;
   weight?: number;
+  weightUnit?: UnitPreference;
   rpe?: number;
   isWarmup?: boolean;
 };
@@ -51,7 +53,7 @@ function getDefaultTitle() {
 }
 
 function cloneWorkoutForActive(sourceWorkout: Workout): Workout {
-  return {
+  return normalizeWorkout({
     ...sourceWorkout,
     id: createId("workout"),
     title: `${sourceWorkout.title} Copy`,
@@ -66,7 +68,7 @@ function cloneWorkoutForActive(sourceWorkout: Workout): Workout {
         setNumber: index + 1,
       })),
     })),
-  };
+  });
 }
 
 function emit(nextState: ActiveWorkoutState) {
@@ -94,7 +96,7 @@ function updateActiveWorkout(updater: (workout: Workout) => Workout) {
   }
 
   emitAndPersist({
-    activeWorkout: updater(state.activeWorkout),
+    activeWorkout: normalizeWorkout(updater(state.activeWorkout)),
     isHydrated: true,
   });
 }
@@ -102,7 +104,7 @@ function updateActiveWorkout(updater: (workout: Workout) => Workout) {
 function startWorkout(sourceWorkout?: Workout) {
   const activeWorkout = sourceWorkout
     ? sourceWorkout.status === "active"
-      ? sourceWorkout
+      ? normalizeWorkout(sourceWorkout)
       : cloneWorkoutForActive(sourceWorkout)
     : {
         id: createId("workout"),
@@ -163,6 +165,7 @@ function addSet(workoutExerciseId: string, draft: SetDraft = {}) {
         setNumber: nextSetNumber,
         reps: draft.reps ?? 0,
         weight: draft.weight ?? 0,
+        weightUnit: draft.weightUnit ?? "lb",
         rpe: draft.rpe,
         isWarmup: draft.isWarmup,
       };
@@ -226,7 +229,7 @@ function finishWorkout() {
   }
 
   const completedWorkout: Workout = {
-    ...state.activeWorkout,
+    ...normalizeWorkout(state.activeWorkout),
     title: state.activeWorkout.title.trim() || "Workout",
     status: "completed",
   };
@@ -249,7 +252,21 @@ function renumberSets(sets: WorkoutSet[]) {
   return sets.map((set, index) => ({
     ...set,
     setNumber: index + 1,
+    weightUnit: set.weightUnit ?? "lb",
   }));
+}
+
+function normalizeWorkout(workout: Workout): Workout {
+  return {
+    ...workout,
+    exercises: workout.exercises.map((workoutExercise) => ({
+      ...workoutExercise,
+      sets: workoutExercise.sets.map((set) => ({
+        ...set,
+        weightUnit: set.weightUnit ?? "lb",
+      })),
+    })),
+  };
 }
 
 function buildStore(snapshot: ActiveWorkoutState): ActiveWorkoutStore {
@@ -272,7 +289,7 @@ async function hydrateActiveWorkoutState() {
   const storedState = await loadStoredJson<ActiveWorkoutState>(ACTIVE_WORKOUT_STORAGE_KEY);
 
   emit({
-    activeWorkout: storedState?.activeWorkout ?? null,
+    activeWorkout: storedState?.activeWorkout ? normalizeWorkout(storedState.activeWorkout) : null,
     isHydrated: true,
   });
 }

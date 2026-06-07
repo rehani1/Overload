@@ -13,6 +13,7 @@ import type { AppColors } from "@/constants/colors";
 import { spacing } from "@/constants/spacing";
 import { typography } from "@/constants/typography";
 import { useThemeColors } from "@/theme/ThemeProvider";
+import type { UnitPreference } from "@/types/user";
 import type { Workout, WorkoutExercise, WorkoutSet } from "@/types/workout";
 
 type WorkoutEditorProps = {
@@ -28,6 +29,7 @@ type WorkoutEditorProps = {
   onSave?: () => void;
   onUpdateWorkout: (updater: (workout: Workout) => Workout) => void;
   saveLabel?: string;
+  unitPreference?: UnitPreference;
   workout: Workout;
 };
 
@@ -44,6 +46,7 @@ export function WorkoutEditor({
   onSave,
   onUpdateWorkout,
   saveLabel = "Save",
+  unitPreference = "lb",
   workout,
 }: WorkoutEditorProps) {
   const styles = createStyles(useThemeColors());
@@ -89,6 +92,7 @@ export function WorkoutEditor({
               reps: 0,
               setNumber: 1,
               weight: 0,
+              weightUnit: unitPreference,
             },
           ],
         },
@@ -132,6 +136,7 @@ export function WorkoutEditor({
             reps: previousSet?.reps ?? 0,
             setNumber: workoutExercise.sets.length + 1,
             weight: previousSet?.weight ?? 0,
+            weightUnit: previousSet?.weightUnit ?? unitPreference,
             rpe: previousSet?.rpe,
           },
         ],
@@ -243,45 +248,12 @@ export function WorkoutEditor({
               ) : (
                 <View style={styles.setList}>
                   {workoutExercise.sets.map((set) => (
-                    <View key={set.id} style={styles.setRow}>
-                      <Text style={styles.setLabel}>Set {set.setNumber}</Text>
-                      <CompactTextInput
-                        keyboardType="numeric"
-                        label="Reps"
-                        onChangeText={(value) =>
-                          updateSet(workoutExercise.id, set.id, {
-                            reps: parseWholeNumber(value),
-                          })
-                        }
-                        value={String(set.reps)}
-                      />
-                      <CompactTextInput
-                        keyboardType="decimal-pad"
-                        label="Lb"
-                        onChangeText={(value) =>
-                          updateSet(workoutExercise.id, set.id, {
-                            weight: parseNonNegativeNumber(value),
-                          })
-                        }
-                        value={String(set.weight)}
-                      />
-                      <CompactTextInput
-                        keyboardType="decimal-pad"
-                        label="RPE"
-                        onChangeText={(value) =>
-                          updateSet(workoutExercise.id, set.id, { rpe: parseRpe(value) })
-                        }
-                        value={set.rpe === undefined ? "" : String(set.rpe)}
-                      />
-                      <Button
-                        icon="trash"
-                        onPress={() => removeSet(workoutExercise.id, set.id)}
-                        style={styles.setDeleteButton}
-                        variant="danger"
-                      >
-                        Del
-                      </Button>
-                    </View>
+                    <SetEditorRow
+                      key={set.id}
+                      onRemove={() => removeSet(workoutExercise.id, set.id)}
+                      onUpdate={(updates) => updateSet(workoutExercise.id, set.id, updates)}
+                      set={set}
+                    />
                   ))}
                 </View>
               )}
@@ -355,6 +327,53 @@ export function WorkoutEditor({
           ) : null}
         </View>
       )}
+    </View>
+  );
+}
+
+type SetEditorRowProps = {
+  onRemove: () => void;
+  onUpdate: (updates: Partial<Omit<WorkoutSet, "id">>) => void;
+  set: WorkoutSet;
+};
+
+function SetEditorRow({ onRemove, onUpdate, set }: SetEditorRowProps) {
+  const styles = createStyles(useThemeColors());
+  const setUnit = set.weightUnit ?? "lb";
+
+  return (
+    <View style={styles.setRow}>
+      <Text style={styles.setLabel}>Set {set.setNumber}</Text>
+      <CompactTextInput
+        keyboardType="numeric"
+        label="Reps"
+        onChangeText={(value) =>
+          onUpdate({
+            reps: parseWholeNumber(value),
+          })
+        }
+        value={String(set.reps)}
+      />
+      <CompactTextInput
+        keyboardType="decimal-pad"
+        label={setUnit.toUpperCase()}
+        onChangeText={(value) =>
+          onUpdate({
+            weight: parseNonNegativeNumber(value),
+            weightUnit: setUnit,
+          })
+        }
+        value={String(set.weight)}
+      />
+      <CompactTextInput
+        keyboardType="decimal-pad"
+        label="RPE"
+        onChangeText={(value) => onUpdate({ rpe: parseRpe(value) })}
+        value={set.rpe === undefined ? "" : String(set.rpe)}
+      />
+      <Button icon="trash" onPress={onRemove} style={styles.setDeleteButton} variant="danger">
+        Del
+      </Button>
     </View>
   );
 }
