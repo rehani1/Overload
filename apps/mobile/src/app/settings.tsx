@@ -1,7 +1,7 @@
 import { Redirect, router } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 
-import { isApiConfigured } from "@/api/client";
+import { isApiConfigured, isBackendSyncEnabled } from "@/api/client";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { Header } from "@/components/Header";
@@ -71,7 +71,19 @@ export default function SettingsScreen() {
         </Card>
 
         <Card title="App">
-          <SettingsRow label="Web" value={isApiConfigured ? "Synced" : "Not synced"} />
+          <SettingsRow
+            label="Web"
+            value={isBackendSyncEnabled() ? "Synced" : isApiConfigured ? "Ready to pair" : "Not synced"}
+          />
+          {isApiConfigured && !isBackendSyncEnabled() ? (
+            <Button
+              icon="arrow-right-on-rectangle"
+              onPress={() => router.push("/pair-mobile")}
+              variant="secondary"
+            >
+              Pair mobile
+            </Button>
+          ) : null}
         </Card>
 
         <Card title="Account">

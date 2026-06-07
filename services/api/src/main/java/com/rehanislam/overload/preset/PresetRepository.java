@@ -56,15 +56,39 @@ public class PresetRepository {
 	}
 
 	public WorkoutPresetResponse createWorkoutPreset(UUID userId, String title, WorkoutResponse workout) {
+		return createWorkoutPreset(userId, null, title, workout);
+	}
+
+	public Optional<WorkoutPresetResponse> findWorkoutPresetByClientImportId(UUID userId, String clientImportId) {
+		List<WorkoutPresetResponse> rows = jdbcTemplate.query(
+			"""
+			select id, created_at, title, workout_json
+			from workout_presets
+			where user_id = ? and client_import_id = ?
+			""",
+			(rs, rowNum) -> mapWorkoutPreset(rs),
+			userId,
+			clientImportId
+		);
+		return rows.stream().findFirst();
+	}
+
+	public WorkoutPresetResponse createWorkoutPreset(
+		UUID userId,
+		String clientImportId,
+		String title,
+		WorkoutResponse workout
+	) {
 		return jdbcTemplate.queryForObject(
 			"""
 			insert into workout_presets
-			    (user_id, title, workout_json)
-			values (?, ?, cast(? as jsonb))
+			    (user_id, client_import_id, title, workout_json)
+			values (?, ?, ?, cast(? as jsonb))
 			returning id, created_at, title, workout_json
 			""",
 			(rs, rowNum) -> mapWorkoutPreset(rs),
 			userId,
+			clientImportId,
 			title,
 			toJson(workout)
 		);
@@ -128,15 +152,39 @@ public class PresetRepository {
 	}
 
 	public MealPresetResponse createMealPreset(UUID userId, String foodName, NutritionEntryResponse entry) {
+		return createMealPreset(userId, null, foodName, entry);
+	}
+
+	public Optional<MealPresetResponse> findMealPresetByClientImportId(UUID userId, String clientImportId) {
+		List<MealPresetResponse> rows = jdbcTemplate.query(
+			"""
+			select id, created_at, food_name, entry_json
+			from meal_presets
+			where user_id = ? and client_import_id = ?
+			""",
+			(rs, rowNum) -> mapMealPreset(rs),
+			userId,
+			clientImportId
+		);
+		return rows.stream().findFirst();
+	}
+
+	public MealPresetResponse createMealPreset(
+		UUID userId,
+		String clientImportId,
+		String foodName,
+		NutritionEntryResponse entry
+	) {
 		return jdbcTemplate.queryForObject(
 			"""
 			insert into meal_presets
-			    (user_id, food_name, entry_json)
-			values (?, ?, cast(? as jsonb))
+			    (user_id, client_import_id, food_name, entry_json)
+			values (?, ?, ?, cast(? as jsonb))
 			returning id, created_at, food_name, entry_json
 			""",
 			(rs, rowNum) -> mapMealPreset(rs),
 			userId,
+			clientImportId,
 			foodName,
 			toJson(entry)
 		);

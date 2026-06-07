@@ -6,11 +6,14 @@ import {
   Gauge,
   Library,
   LogOut,
+  Smartphone,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../auth/useAuth";
+import { PairMobileDialog } from "./PairMobileDialog";
 
 type NavItem = {
   href: string;
@@ -29,6 +32,7 @@ const navItems: NavItem[] = [
 export function AppLayout() {
   const navigate = useNavigate();
   const { logout, user } = useAuth();
+  const [isPairDialogOpen, setIsPairDialogOpen] = useState(false);
 
   async function handleLogout() {
     await logout();
@@ -85,6 +89,14 @@ export function AppLayout() {
             <button
               className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-white/15 px-3 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
               type="button"
+              onClick={() => setIsPairDialogOpen(true)}
+            >
+              <Smartphone className="h-4 w-4" aria-hidden="true" />
+              Pair mobile
+            </button>
+            <button
+              className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-white/15 px-3 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
+              type="button"
               onClick={handleLogout}
             >
               <LogOut className="h-4 w-4" aria-hidden="true" />
@@ -108,14 +120,24 @@ export function AppLayout() {
                 <p className="truncate text-xs text-zinc-500">{user?.goal}</p>
               </div>
             </div>
-            <button
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-800 shadow-sm transition hover:border-zinc-400"
-              type="button"
-              onClick={handleLogout}
-            >
-              <LogOut className="h-4 w-4" aria-hidden="true" />
-              <span className="hidden sm:inline">Sign out</span>
-            </button>
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                className="hidden h-10 items-center justify-center gap-2 rounded-lg border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-800 shadow-sm transition hover:border-zinc-400 sm:inline-flex"
+                type="button"
+                onClick={() => setIsPairDialogOpen(true)}
+              >
+                <Smartphone className="h-4 w-4" aria-hidden="true" />
+                Pair mobile
+              </button>
+              <button
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-800 shadow-sm transition hover:border-zinc-400"
+                type="button"
+                onClick={handleLogout}
+              >
+                <LogOut className="h-4 w-4" aria-hidden="true" />
+                <span className="hidden sm:inline">Sign out</span>
+              </button>
+            </div>
           </div>
         </header>
 
@@ -123,6 +145,10 @@ export function AppLayout() {
           <Outlet />
         </main>
       </div>
+      <PairMobileDialog
+        isOpen={isPairDialogOpen}
+        onClose={() => setIsPairDialogOpen(false)}
+      />
     </div>
   );
 }

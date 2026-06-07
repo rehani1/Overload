@@ -2,6 +2,7 @@ import { useState } from "react";
 import { router } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
+import { isApiConfigured } from "@/api/client";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { Input } from "@/components/Input";
@@ -59,6 +60,15 @@ export default function LoginScreen() {
           <Button icon="arrow-right-on-rectangle" onPress={handleLogin}>
             Continue
           </Button>
+          {isApiConfigured ? (
+            <Button
+              icon="arrow-right-on-rectangle"
+              onPress={() => router.push("/pair-mobile")}
+              variant="secondary"
+            >
+              Pair with web
+            </Button>
+          ) : null}
         </Card>
 
         <View style={styles.footerRow}>

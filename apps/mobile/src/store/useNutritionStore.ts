@@ -218,6 +218,21 @@ export function setNutritionStoreAccount(accountId: string | null) {
   void hydrateNutritionState(accountId, activeAccountVersion);
 }
 
+export async function importNutritionForAccount(
+  accountId: string,
+  target: NutritionTarget,
+  entries: NutritionEntry[],
+  targetsByDate: Record<string, NutritionTarget>,
+) {
+  const normalizedEntries = normalizeStoredEntries(entries);
+  await saveNutritionStateForAccount(accountId, {
+    entries: normalizedEntries,
+    isHydrated: true,
+    target: mergeStoredTarget(target),
+    targetsByDate: mergeStoredTargetsByDate(targetsByDate, normalizedEntries),
+  });
+}
+
 async function hydrateNutritionState(accountId: string, accountVersion: number) {
   const storedState = await loadAccountScopedJson<Partial<NutritionState>>(
     NUTRITION_STORAGE_KEY,

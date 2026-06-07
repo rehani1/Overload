@@ -6,7 +6,7 @@ import {
   View,
 } from "react-native";
 
-import { isApiConfigured } from "@/api/client";
+import { isBackendSyncEnabled } from "@/api/client";
 import {
   createWorkout as createWorkoutRequest,
   deleteWorkout as deleteWorkoutRequest,
@@ -316,9 +316,9 @@ export function WorkoutDateDetails({
   const [draftWorkout, setDraftWorkout] = useState<Workout | null>(null);
   const [syncState, setSyncState] = useState<SyncState>({
     kind: "idle",
-    message: isApiConfigured
+    message: isBackendSyncEnabled()
       ? "Backend sync is enabled."
-      : "Saved locally. Backend sync will activate when API URL is configured.",
+      : "Saved locally. Backend sync will activate after mobile pairing.",
   });
   const workoutsByDate = groupWorkoutsByDate(completedWorkouts);
   const selectedWorkouts = workoutsByDate.get(selectedDateKey) ?? [];
@@ -339,7 +339,7 @@ export function WorkoutDateDetails({
       message: "Workout deleted locally. Syncing delete...",
     });
 
-    if (!isApiConfigured) {
+    if (!isBackendSyncEnabled()) {
       setSyncState({
         kind: "success",
         message: "Workout deleted locally. Backend sync is not configured yet.",
@@ -408,7 +408,7 @@ export function WorkoutDateDetails({
       message: "Workout saved locally. Syncing new workout...",
     });
 
-    if (!isApiConfigured) {
+    if (!isBackendSyncEnabled()) {
       setSyncState({
         kind: "success",
         message: "Workout saved locally. Backend sync is not configured yet.",
@@ -468,7 +468,7 @@ export function WorkoutDateDetails({
       message: "Workout saved locally. Syncing changes...",
     });
 
-    if (!isApiConfigured) {
+    if (!isBackendSyncEnabled()) {
       setSyncState({
         kind: "success",
         message: "Workout saved locally. Backend sync is not configured yet.",

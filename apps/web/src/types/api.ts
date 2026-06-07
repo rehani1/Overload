@@ -21,6 +21,11 @@ export type AuthResponse = {
   refreshToken: string;
 };
 
+export type PairingCodeResponse = {
+  code: string;
+  expiresAt: string;
+};
+
 export type LoginRequest = {
   email: string;
   password: string;

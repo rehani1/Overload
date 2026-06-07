@@ -1,5 +1,12 @@
 import { useSyncExternalStore } from "react";
 
+import {
+  clearApiAuthSession,
+  getApiAuthSession,
+  isApiConfigured,
+  setApiAuthSession,
+  type ApiAuthSession,
+} from "@/api/client";
 import { loadStoredJson, saveStoredJson } from "@/lib/storage";
 import { setActiveWorkoutStoreAccount } from "@/store/useActiveWorkoutStore";
 import { setNutritionStoreAccount } from "@/store/useNutritionStore";
@@ -45,6 +52,7 @@ type AuthResult = {
 
 type AuthStore = Pick<AuthState, "isHydrated" | "user"> & {
   isAuthenticated: boolean;
+  connectApiSession: (session: ApiAuthSession) => Promise<User>;
   login: (input: LoginInput) => AuthResult;
   logout: () => void;
   register: (input: RegisterInput) => AuthResult;
@@ -185,6 +193,7 @@ function register(input: RegisterInput): AuthResult {
 
 function logout() {
   setAccountScopedStores(null);
+  void clearApiAuthSession();
 
   emitAndPersist({
     ...state,
@@ -225,6 +234,19 @@ function updateUser(
   return updatedUser;
 }
 
+async function connectApiSession(session: ApiAuthSession) {
+  await setApiAuthSession(session);
+  setAccountScopedStores(session.user.id);
+
+  emitAndPersist({
+    ...state,
+    isHydrated: true,
+    user: session.user,
+  });
+
+  return session.user;
+}
+
 function normalizeUserUpdates(
   updates: Partial<
     Pick<User, "goal" | "heightInches" | "sex" | "unitPreference" | "weightPounds">
@@ -248,6 +270,20 @@ function normalizeUserUpdates(
 async function hydrateAuthState() {
   const storedState = await loadStoredJson<Partial<AuthState>>(AUTH_STORAGE_KEY);
   const users = mergeStoredUsers(storedState?.users, storedState?.user);
+  const apiSession = isApiConfigured ? await getApiAuthSession() : null;
+  if (apiSession) {
+    const nextState: AuthState = {
+      isHydrated: true,
+      user: apiSession.user,
+      users,
+    };
+
+    setAccountScopedStores(apiSession.user.id);
+    emit(nextState);
+    void saveAuthState(nextState);
+    return;
+  }
+
   const currentUser = storedState?.user
     ? users.find((storedUser) => storedUser.id === storedState.user?.id) ??
       users.find(
@@ -277,6 +313,7 @@ function buildStore(snapshot: AuthState): AuthStore {
   return {
     isHydrated: snapshot.isHydrated,
     isAuthenticated: snapshot.user !== null,
+    connectApiSession,
     login,
     logout,
     register,

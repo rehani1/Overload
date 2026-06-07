@@ -8,9 +8,12 @@ import java.util.UUID;
 
 import com.rehanislam.overload.workout.WorkoutDtos.CreateWorkoutRequest;
 import com.rehanislam.overload.workout.WorkoutDtos.ExerciseInput;
+import com.rehanislam.overload.workout.WorkoutDtos.ExerciseSnapshot;
 import com.rehanislam.overload.workout.WorkoutDtos.UpdateWorkoutRequest;
+import com.rehanislam.overload.workout.WorkoutDtos.WorkoutExerciseResponse;
 import com.rehanislam.overload.workout.WorkoutDtos.WorkoutExerciseRequest;
 import com.rehanislam.overload.workout.WorkoutDtos.WorkoutResponse;
+import com.rehanislam.overload.workout.WorkoutDtos.WorkoutSetResponse;
 import com.rehanislam.overload.workout.WorkoutDtos.WorkoutSetRequest;
 import com.rehanislam.overload.workout.WorkoutRepository.ExerciseWrite;
 import com.rehanislam.overload.workout.WorkoutRepository.WorkoutExerciseWrite;
@@ -45,6 +48,7 @@ public class WorkoutService {
 	@Transactional
 	public WorkoutResponse create(UUID userId, CreateWorkoutRequest request) {
 		return workoutRepository.create(userId, new WorkoutWrite(
+			null,
 			request.title().trim(),
 			parseDate(request.date()),
 			normalizeExercises(request.exercises()),
@@ -61,6 +65,7 @@ public class WorkoutService {
 			? List.of()
 			: normalizeExercises(request.exercises());
 		WorkoutWrite workout = new WorkoutWrite(
+			null,
 			request.title() == null ? existing.title() : request.title().trim(),
 			request.date() == null ? parseDate(existing.date()) : parseDate(request.date()),
 			exercises,
@@ -71,6 +76,27 @@ public class WorkoutService {
 
 		return workoutRepository.update(userId, parseUuid(id), workout)
 			.orElseThrow(() -> notFound("Workout not found."));
+	}
+
+	@Transactional
+	public WorkoutResponse importWorkout(UUID userId, WorkoutResponse workout) {
+		String clientImportId = trimToNull(workout.id());
+		if (clientImportId != null) {
+			var existingWorkout = workoutRepository.findByClientImportId(userId, clientImportId);
+			if (existingWorkout.isPresent()) {
+				return existingWorkout.get();
+			}
+		}
+
+		return workoutRepository.create(userId, new WorkoutWrite(
+			clientImportId,
+			workout.title().trim(),
+			parseDate(workout.date()),
+			normalizeImportedExercises(workout.exercises()),
+			trimToNull(workout.notes()),
+			workout.status() == null ? "completed" : workout.status(),
+			true
+		));
 	}
 
 	@Transactional
@@ -105,6 +131,31 @@ public class WorkoutService {
 		);
 	}
 
+	private List<WorkoutExerciseWrite> normalizeImportedExercises(List<WorkoutExerciseResponse> exercises) {
+		return (exercises == null ? List.<WorkoutExerciseResponse>of() : exercises)
+			.stream()
+			.map(this::normalizeImportedExercise)
+			.toList();
+	}
+
+	private WorkoutExerciseWrite normalizeImportedExercise(WorkoutExerciseResponse request) {
+		ExerciseSnapshot exercise = request.exercise();
+		if (exercise == null) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Workout exercise is missing exercise details.");
+		}
+		return new WorkoutExerciseWrite(
+			new ExerciseWrite(
+				trimToDefault(exercise.id(), UUID.randomUUID().toString()),
+				exercise.name().trim(),
+				exercise.muscleGroup().trim(),
+				exercise.equipment().trim(),
+				exercise.isCustom()
+			),
+			normalizeImportedSets(request.sets()),
+			trimToNull(request.notes())
+		);
+	}
+
 	private List<WorkoutSetWrite> normalizeSets(List<WorkoutSetRequest> sets) {
 		List<WorkoutSetRequest> safeSets = sets == null ? List.of() : sets;
 		return java.util.stream.IntStream.range(0, safeSets.size())
@@ -116,6 +167,24 @@ public class WorkoutService {
 		return new WorkoutSetWrite(
 			request.setNumber() == null ? fallbackSetNumber : request.setNumber(),
 			request.reps() == null ? 0 : request.reps(),
+			scale(request.weight() == null ? BigDecimal.ZERO : request.weight()),
+			request.weightUnit() == null ? "lb" : request.weightUnit(),
+			request.rpe() == null ? null : scale(request.rpe()),
+			Boolean.TRUE.equals(request.isWarmup())
+		);
+	}
+
+	private List<WorkoutSetWrite> normalizeImportedSets(List<WorkoutSetResponse> sets) {
+		List<WorkoutSetResponse> safeSets = sets == null ? List.of() : sets;
+		return java.util.stream.IntStream.range(0, safeSets.size())
+			.mapToObj(index -> normalizeImportedSet(safeSets.get(index), index + 1))
+			.toList();
+	}
+
+	private WorkoutSetWrite normalizeImportedSet(WorkoutSetResponse request, int fallbackSetNumber) {
+		return new WorkoutSetWrite(
+			request.setNumber() <= 0 ? fallbackSetNumber : request.setNumber(),
+			Math.max(0, request.reps()),
 			scale(request.weight() == null ? BigDecimal.ZERO : request.weight()),
 			request.weightUnit() == null ? "lb" : request.weightUnit(),
 			request.rpe() == null ? null : scale(request.rpe()),

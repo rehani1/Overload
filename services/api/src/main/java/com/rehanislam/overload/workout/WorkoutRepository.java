@@ -52,16 +52,31 @@ public class WorkoutRepository {
 		return rows.stream().findFirst();
 	}
 
+	public Optional<WorkoutResponse> findByClientImportId(UUID userId, String clientImportId) {
+		List<WorkoutResponse> rows = jdbcTemplate.query(
+			"""
+			select id, title, workout_date, notes, status
+			from workouts
+			where user_id = ? and client_import_id = ?
+			""",
+			(rs, rowNum) -> mapWorkout(rs),
+			userId,
+			clientImportId
+		);
+		return rows.stream().findFirst();
+	}
+
 	public WorkoutResponse create(UUID userId, WorkoutWrite workout) {
 		UUID workoutId = jdbcTemplate.queryForObject(
 			"""
 			insert into workouts
-			    (user_id, title, workout_date, notes, status)
-			values (?, ?, ?, ?, ?)
+			    (user_id, client_import_id, title, workout_date, notes, status)
+			values (?, ?, ?, ?, ?, ?)
 			returning id
 			""",
 			UUID.class,
 			userId,
+			workout.clientImportId(),
 			workout.title(),
 			workout.date(),
 			workout.notes(),
@@ -223,6 +238,7 @@ public class WorkoutRepository {
 	}
 
 	public record WorkoutWrite(
+		String clientImportId,
 		String title,
 		LocalDate date,
 		List<WorkoutExerciseWrite> exercises,

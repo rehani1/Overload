@@ -5,8 +5,8 @@ Overload is a fitness tracking and planning project with a completed Expo mobile
 ## Current Repo
 
 - `apps/mobile` - Expo Router, React Native, TypeScript mobile app. This is the current 1.0.0 baseline.
-- `apps/web` - reserved for the React/Vite desktop companion app.
-- `services/api` - reserved for the Spring Boot API. The existing Flyway nutrition migration is the starting database history.
+- `apps/web` - placeholder for the next React/Vite desktop companion phase.
+- `services/api` - Spring Boot API with authentication, profile, fitness domain, nutrition, preset, program, and analytics routes.
 - `infra` - local infrastructure, including Docker Compose for PostgreSQL.
 - `docs` - deployment and release notes.
 
@@ -15,7 +15,7 @@ Overload is a fitness tracking and planning project with a completed Expo mobile
 - Node.js 20 LTS or newer
 - npm 10 or newer
 - Docker Desktop or Docker Engine with Docker Compose v2
-- Java 21 and Maven for backend work once `services/api` is scaffolded
+- Java 21 for backend work
 
 ## Local Setup
 
@@ -59,7 +59,7 @@ npm run web
 npm run check
 ```
 
-The mobile app remains local-first unless `EXPO_PUBLIC_API_URL` is set. Leave that variable unset until the backend API is available.
+The mobile app remains local-first unless `EXPO_PUBLIC_API_URL` is set. Leave that variable unset unless backend API mode is being tested intentionally.
 
 ## Backend Commands
 
@@ -103,7 +103,7 @@ Current API surface:
 
 ## Web Commands
 
-Web scaffolding will follow the backend foundation. Once `apps/web` contains the Vite app, the intended local commands are:
+Web scaffolding is the next phase. Once `apps/web` contains the Vite app, the intended local commands are:
 
 ```bash
 cd apps/web
@@ -120,13 +120,13 @@ VITE_API_URL=http://localhost:8080/api
 
 ## Full-Stack Compose
 
-`infra/docker-compose.yml` includes `api` and `web` services behind the `app` profile for later slices. They become usable after the backend and web projects are scaffolded.
+`infra/docker-compose.yml` includes `api` and `web` services behind the `app` profile for later slices. The API service can run against local Postgres now; the web service becomes usable after `apps/web` is scaffolded.
 
 ```bash
 docker compose -f infra/docker-compose.yml --profile app up --build
 ```
 
-For now, use Compose for PostgreSQL only.
+Until the web app exists, use Compose for PostgreSQL and optional API smoke testing only.
 
 ## Release Notes
 

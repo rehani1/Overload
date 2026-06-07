@@ -6,7 +6,7 @@ import {
   View,
 } from "react-native";
 
-import { isApiConfigured } from "@/api/client";
+import { isBackendSyncEnabled } from "@/api/client";
 import {
   createNutritionEntry,
   deleteNutritionEntry,
@@ -96,9 +96,9 @@ export function NutritionSection({
   const [isTargetModalVisible, setIsTargetModalVisible] = useState(false);
   const [syncState, setSyncState] = useState<SyncState>({
     kind: "idle",
-    message: isApiConfigured
+    message: isBackendSyncEnabled()
       ? "Backend sync is enabled."
-      : "Saved locally. Backend sync will activate when API URL is configured.",
+      : "Saved locally. Backend sync will activate after mobile pairing.",
   });
   const selectedDate = selectedDateProp ?? localSelectedDate;
   const entriesForDate = entries.filter((entry) => entry.date === selectedDate);
@@ -124,7 +124,7 @@ export function NutritionSection({
       message: "Nutrition entry saved locally. Syncing entry...",
     });
 
-    if (!isApiConfigured) {
+    if (!isBackendSyncEnabled()) {
       setSyncState({
         kind: "success",
         message: "Nutrition entry saved locally. Backend sync is not configured yet.",
@@ -171,7 +171,7 @@ export function NutritionSection({
       message: "Meal preset added locally. Syncing entry...",
     });
 
-    if (!isApiConfigured) {
+    if (!isBackendSyncEnabled()) {
       setSyncState({
         kind: "success",
         message: "Meal preset added locally. Backend sync is not configured yet.",
@@ -205,7 +205,7 @@ export function NutritionSection({
       message: "Nutrition entry deleted locally. Syncing delete...",
     });
 
-    if (!isApiConfigured) {
+    if (!isBackendSyncEnabled()) {
       setSyncState({
         kind: "success",
         message: "Nutrition entry deleted locally. Backend sync is not configured yet.",
@@ -259,7 +259,7 @@ export function NutritionSection({
       message: "Nutrition entry saved locally. Syncing changes...",
     });
 
-    if (!isApiConfigured) {
+    if (!isBackendSyncEnabled()) {
       setSyncState({
         kind: "success",
         message: "Nutrition entry saved locally. Backend sync is not configured yet.",
@@ -300,7 +300,7 @@ export function NutritionSection({
       message: "Default nutrition target saved locally. Syncing target...",
     });
 
-    if (!isApiConfigured) {
+    if (!isBackendSyncEnabled()) {
       setSyncState({
         kind: "success",
         message: "Default nutrition target saved locally. Backend sync is not configured yet.",

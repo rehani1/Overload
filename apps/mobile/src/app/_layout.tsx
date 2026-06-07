@@ -27,6 +27,7 @@ function RootNavigator() {
         <Stack.Screen name="index" />
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="pair-mobile" />
         <Stack.Screen name="settings" />
         <Stack.Screen name="workout/active" />
       </Stack>
@@ -47,15 +48,16 @@ function useRouteProtection() {
 
     const isAuthRoute =
       firstSegment === "(auth)" || firstSegment === "login" || firstSegment === "register";
+    const isPairRoute = firstSegment === "pair-mobile";
     const isIndexRoute = !firstSegment;
-    const isPublicRoute = isAuthRoute || isIndexRoute;
+    const isPublicRoute = isAuthRoute || isIndexRoute || isPairRoute;
 
     if (!isAuthenticated && !isPublicRoute) {
       router.replace("/login");
       return;
     }
 
-    if (isAuthenticated && isPublicRoute) {
+    if (isAuthenticated && (isAuthRoute || isIndexRoute)) {
       router.replace("/home");
     }
   }, [firstSegment, isAuthenticated, isHydrated, navigationState?.key]);

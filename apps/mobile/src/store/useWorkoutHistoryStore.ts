@@ -159,6 +159,13 @@ export function setWorkoutHistoryStoreAccount(accountId: string | null) {
   void hydrateWorkoutHistoryState(accountId, activeAccountVersion);
 }
 
+export async function importWorkoutHistoryForAccount(accountId: string, workouts: Workout[]) {
+  await saveWorkoutHistoryStateForAccount(accountId, {
+    isHydrated: true,
+    workouts: normalizeStoredWorkouts(workouts),
+  });
+}
+
 async function hydrateWorkoutHistoryState(accountId: string, accountVersion: number) {
   const storedState = await loadAccountScopedJson<WorkoutHistoryState>(
     WORKOUT_HISTORY_STORAGE_KEY,

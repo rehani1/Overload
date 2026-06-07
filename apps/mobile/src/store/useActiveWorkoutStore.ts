@@ -298,6 +298,21 @@ export function setActiveWorkoutStoreAccount(accountId: string | null) {
   void hydrateActiveWorkoutState(accountId, activeAccountVersion);
 }
 
+export async function importActiveWorkoutForAccount(
+  accountId: string,
+  activeWorkout: Workout | null,
+) {
+  if (activeWorkout) {
+    await saveActiveWorkoutStateForAccount(accountId, {
+      activeWorkout: normalizeWorkout(activeWorkout),
+      isHydrated: true,
+    });
+    return;
+  }
+
+  await removeAccountScopedJson(ACTIVE_WORKOUT_STORAGE_KEY, accountId);
+}
+
 async function hydrateActiveWorkoutState(accountId: string, accountVersion: number) {
   const storedState = await loadAccountScopedJson<ActiveWorkoutState>(
     ACTIVE_WORKOUT_STORAGE_KEY,

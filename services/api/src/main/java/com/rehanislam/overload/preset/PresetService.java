@@ -35,6 +35,23 @@ public class PresetService {
 	}
 
 	@Transactional
+	public WorkoutPresetResponse importWorkoutPreset(UUID userId, WorkoutPresetResponse preset) {
+		String clientImportId = trimToNull(preset.id());
+		if (clientImportId != null) {
+			var existingPreset = presetRepository.findWorkoutPresetByClientImportId(userId, clientImportId);
+			if (existingPreset.isPresent()) {
+				return existingPreset.get();
+			}
+		}
+		return presetRepository.createWorkoutPreset(
+			userId,
+			clientImportId,
+			preset.title().trim(),
+			preset.workout()
+		);
+	}
+
+	@Transactional
 	public WorkoutPresetResponse updateWorkoutPreset(UUID userId, String id, WorkoutPresetUpdateRequest request) {
 		WorkoutPresetResponse existing = presetRepository.findWorkoutPreset(userId, parseUuid(id))
 			.orElseThrow(() -> notFound("Workout preset not found."));
@@ -61,6 +78,23 @@ public class PresetService {
 	@Transactional
 	public MealPresetResponse createMealPreset(UUID userId, MealPresetRequest request) {
 		return presetRepository.createMealPreset(userId, request.foodName().trim(), request.entry());
+	}
+
+	@Transactional
+	public MealPresetResponse importMealPreset(UUID userId, MealPresetResponse preset) {
+		String clientImportId = trimToNull(preset.id());
+		if (clientImportId != null) {
+			var existingPreset = presetRepository.findMealPresetByClientImportId(userId, clientImportId);
+			if (existingPreset.isPresent()) {
+				return existingPreset.get();
+			}
+		}
+		return presetRepository.createMealPreset(
+			userId,
+			clientImportId,
+			preset.foodName().trim(),
+			preset.entry()
+		);
 	}
 
 	@Transactional
@@ -92,5 +126,12 @@ public class PresetService {
 
 	private ResponseStatusException notFound(String message) {
 		return new ResponseStatusException(HttpStatus.NOT_FOUND, message);
+	}
+
+	private String trimToNull(String value) {
+		if (value == null || value.trim().isEmpty()) {
+			return null;
+		}
+		return value.trim();
 	}
 }

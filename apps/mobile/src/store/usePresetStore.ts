@@ -177,6 +177,18 @@ export function setPresetStoreAccount(accountId: string | null) {
   void hydratePresetState(accountId, activeAccountVersion);
 }
 
+export async function importPresetsForAccount(
+  accountId: string,
+  mealPresets: MealPreset[],
+  workoutPresets: WorkoutPreset[],
+) {
+  await savePresetStateForAccount(accountId, {
+    isHydrated: true,
+    mealPresets,
+    workoutPresets,
+  });
+}
+
 async function hydratePresetState(accountId: string, accountVersion: number) {
   const storedState = await loadAccountScopedJson<PresetState>(
     PRESET_STORAGE_KEY,
