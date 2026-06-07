@@ -1,0 +1,56 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: overload-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-overload}
+      POSTGRES_USER: ${POSTGRES_USER:-overload}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-overload}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - overload_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-overload} -d ${POSTGRES_DB:-overload}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    image: eclipse-temurin:21-jdk
+    container_name: overload-api
+    profiles: ["app"]
+    working_dir: /workspace/services/api
+    command: ["sh", "-lc", "./mvnw spring-boot:run"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-overload}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-overload}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-overload}
+      JWT_SECRET: ${JWT_SECRET:-dev-only-change-me-dev-only-change-me}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:8081}
+    ports:
+      - "${API_PORT:-8080}:8080"
+    volumes:
+      - ../:/workspace
+
+  web:
+    image: node:20-bookworm-slim
+    container_name: overload-web
+    profiles: ["app"]
+    working_dir: /workspace/apps/web
+    command: ["sh", "-lc", "npm install && npm run dev -- --host 0.0.0.0"]
+    depends_on:
+      - api
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:8080/api}
+    ports:
+      - "${WEB_PORT:-5173}:5173"
+    volumes:
+      - ../:/workspace
+
+volumes:
+  overload_postgres_data:

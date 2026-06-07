@@ -1,0 +1,113 @@
+# Overload
+
+Overload is a fitness tracking and planning project with a completed Expo mobile app and a planned full-stack desktop companion. The mobile app handles fast workout and nutrition logging. The web app and Spring Boot API will focus on desktop workflows: analytics, program planning, progress review, exercise management, and AI-assisted training feedback.
+
+## Current Repo
+
+- `apps/mobile` - Expo Router, React Native, TypeScript mobile app. This is the current 1.0.0 baseline.
+- `apps/web` - reserved for the React/Vite desktop companion app.
+- `services/api` - reserved for the Spring Boot API. The existing Flyway nutrition migration is the starting database history.
+- `infra` - local infrastructure, including Docker Compose for PostgreSQL.
+- `docs` - deployment and release notes.
+
+## Requirements
+
+- Node.js 20 LTS or newer
+- npm 10 or newer
+- Docker Desktop or Docker Engine with Docker Compose v2
+- Java 21 and Maven for backend work once `services/api` is scaffolded
+
+## Local Setup
+
+Start local PostgreSQL:
+
+```bash
+docker compose -f infra/docker-compose.yml up -d postgres
+```
+
+The default local database settings are:
+
+```text
+Database: overload
+Username: overload
+Password: overload
+Port: 5432
+JDBC URL: jdbc:postgresql://localhost:5432/overload
+```
+
+Stop local infrastructure:
+
+```bash
+docker compose -f infra/docker-compose.yml down
+```
+
+Remove local database data:
+
+```bash
+docker compose -f infra/docker-compose.yml down -v
+```
+
+## Mobile Commands
+
+```bash
+cd apps/mobile
+npm install
+npm start
+npm run ios
+npm run android
+npm run web
+npm run check
+```
+
+The mobile app remains local-first unless `EXPO_PUBLIC_API_URL` is set. Leave that variable unset until the backend API is available.
+
+## Backend Commands
+
+Backend scaffolding is the next implementation slice. Once `services/api` contains the Spring Boot app, the intended local commands are:
+
+```bash
+cd services/api
+./mvnw spring-boot:run
+./mvnw test
+```
+
+Expected backend environment variables:
+
+```text
+SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/overload
+SPRING_DATASOURCE_USERNAME=overload
+SPRING_DATASOURCE_PASSWORD=overload
+JWT_SECRET=replace-with-a-long-random-secret
+CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:8081
+```
+
+## Web Commands
+
+Web scaffolding will follow the backend foundation. Once `apps/web` contains the Vite app, the intended local commands are:
+
+```bash
+cd apps/web
+npm install
+npm run dev
+npm run build
+```
+
+Expected web environment variable:
+
+```text
+VITE_API_URL=http://localhost:8080/api
+```
+
+## Full-Stack Compose
+
+`infra/docker-compose.yml` includes `api` and `web` services behind the `app` profile for later slices. They become usable after the backend and web projects are scaffolded.
+
+```bash
+docker compose -f infra/docker-compose.yml --profile app up --build
+```
+
+For now, use Compose for PostgreSQL only.
+
+## Release Notes
+
+See `docs/DEPLOYMENT.md` for the current mobile deployment checklist and local-first behavior.
