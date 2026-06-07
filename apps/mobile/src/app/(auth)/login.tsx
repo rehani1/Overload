@@ -2,7 +2,6 @@ import { useState } from "react";
 import { router } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
-import { AuthHero } from "@/components/AuthHero";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { Input } from "@/components/Input";
@@ -30,18 +29,10 @@ export default function LoginScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.brandLockup}>
           <Text style={styles.brandMark}>Overload</Text>
-          <Text style={styles.brandMeta}>Mobile companion</Text>
+          <Text style={styles.brandMeta}>Train. Log. Move on.</Text>
         </View>
 
-        <AuthHero
-          details={["Fast logging", "Local demo", "Web-ready data"]}
-          eyebrow="Training without noise"
-          subtitle="Keep the mobile app focused on capturing workouts and nutrition. The deeper review belongs on web later."
-          title="Log in, then get back to training."
-        />
-
-        <Card title="Welcome back">
-          <Text style={styles.formIntro}>Use the demo account or your local profile to continue.</Text>
+        <Card title="Log in">
           <Input
             keyboardType="email-address"
             label="Email"
@@ -56,18 +47,15 @@ export default function LoginScreen() {
             secureTextEntry
             value={password}
           />
+          <Button icon="arrow-right-on-rectangle" onPress={handleLogin}>
+            Continue
+          </Button>
         </Card>
 
-        <View style={styles.actionBlock}>
-          <Button icon="arrow-right-on-rectangle" onPress={handleLogin}>
-            Log In
-          </Button>
-        </View>
-
-        <View style={styles.footerCard}>
-          <Text style={styles.footerText}>New to Overload?</Text>
+        <View style={styles.footerRow}>
+          <Text style={styles.footerText}>New here?</Text>
           <Pressable accessibilityRole="button" onPress={() => router.push("/register")}>
-            <Text style={styles.linkText}>Create an account</Text>
+            <Text style={styles.linkText}>Create account</Text>
           </Pressable>
         </View>
       </ScrollView>
@@ -79,48 +67,35 @@ function createStyles(colors: AppColors) {
   return StyleSheet.create({
   content: {
     flexGrow: 1,
-    gap: spacing.xl,
+    gap: spacing.lg,
     justifyContent: "center",
     paddingBottom: spacing.xxl,
     paddingTop: spacing.xl,
   },
   brandLockup: {
+    alignItems: "center",
     gap: spacing.xs,
   },
   brandMark: {
     color: colors.text,
-    fontSize: typography.sizes.title,
+    fontSize: typography.sizes.display,
     fontWeight: typography.weights.bold,
-    letterSpacing: -0.4,
-    lineHeight: typography.lineHeights.title,
+    letterSpacing: -0.8,
+    lineHeight: typography.lineHeights.display,
   },
   brandMeta: {
     color: colors.textMuted,
-    fontSize: typography.sizes.caption,
-    fontWeight: typography.weights.semibold,
-    letterSpacing: 0.8,
-    lineHeight: typography.lineHeights.caption,
-    textTransform: "uppercase",
-  },
-  formIntro: {
-    color: colors.textMuted,
     fontSize: typography.sizes.body,
+    fontWeight: typography.weights.medium,
     lineHeight: typography.lineHeights.body,
   },
-  actionBlock: {
-    gap: spacing.md,
-  },
-  footerCard: {
+  footerRow: {
     alignItems: "center",
-    backgroundColor: colors.surfaceMuted,
-    borderColor: colors.border,
-    borderRadius: 24,
-    borderWidth: 1,
     flexDirection: "row",
     flexWrap: "wrap",
     gap: spacing.sm,
     justifyContent: "center",
-    padding: spacing.lg,
+    paddingVertical: spacing.sm,
   },
   footerText: {
     color: colors.textMuted,
