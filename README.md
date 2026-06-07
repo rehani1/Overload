@@ -88,6 +88,18 @@ curl http://localhost:8080/api/health
 curl http://localhost:8080/actuator/health
 ```
 
+Current API surface:
+
+- `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/refresh`, `POST /api/auth/logout`
+- `GET /api/users/me`, `PATCH /api/users/me`
+- `GET/POST /api/exercises`, `GET/PUT/DELETE /api/exercises/{id}`
+- `GET/POST /api/workouts`, `GET/PATCH/DELETE /api/workouts/{id}`
+- `GET/POST /api/nutrition/entries`, `PATCH/DELETE /api/nutrition/entries/{id}`
+- `GET/PUT /api/nutrition/target`
+- `GET/POST /api/presets/workouts`, `PATCH/DELETE /api/presets/workouts/{id}`
+- `GET/POST /api/presets/meals`, `PATCH/DELETE /api/presets/meals/{id}`
+- `GET/POST /api/programs`, `GET/PATCH/DELETE /api/programs/{id}`
+
 ## Web Commands
 
 Web scaffolding will follow the backend foundation. Once `apps/web` contains the Vite app, the intended local commands are:
