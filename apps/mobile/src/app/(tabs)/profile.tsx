@@ -24,7 +24,6 @@ export default function ProfileScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Header
           title="Profile"
-          subtitle="Account basics for the mobile logging companion."
           action={
             <Button icon="cog-6-tooth" onPress={() => router.push("/settings")} variant="secondary">
               Settings
@@ -40,12 +39,8 @@ export default function ProfileScreen() {
             </Text>
           </View>
           <View style={styles.heroCopy}>
-            <Text style={styles.heroEyebrow}>Local training profile</Text>
             <Text style={styles.heroTitle}>{fullName}</Text>
             <Text style={styles.heroSubtitle}>{profileUser.email}</Text>
-          </View>
-          <View style={styles.statusPill}>
-            <Text style={styles.statusPillText}>Mobile</Text>
           </View>
         </View>
 
@@ -61,7 +56,7 @@ export default function ProfileScreen() {
 function createStyles(colors: AppColors) {
   return StyleSheet.create({
   content: {
-    gap: spacing.xl,
+    gap: spacing.lg,
     paddingBottom: spacing.xxl,
   },
   profileHero: {
@@ -92,14 +87,6 @@ function createStyles(colors: AppColors) {
     flex: 1,
     gap: spacing.xs,
   },
-  heroEyebrow: {
-    color: colors.primaryMuted,
-    fontSize: typography.sizes.caption,
-    fontWeight: typography.weights.semibold,
-    letterSpacing: 0.8,
-    lineHeight: typography.lineHeights.caption,
-    textTransform: "uppercase",
-  },
   heroTitle: {
     color: colors.onPrimary,
     fontSize: typography.sizes.title,
@@ -111,20 +98,6 @@ function createStyles(colors: AppColors) {
     fontSize: typography.sizes.small,
     lineHeight: typography.lineHeights.small,
   },
-  statusPill: {
-    backgroundColor: "rgba(255, 252, 246, 0.12)",
-    borderColor: "rgba(255, 252, 246, 0.2)",
-    borderRadius: 999,
-    borderWidth: 1,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  statusPillText: {
-    color: colors.onPrimary,
-    fontSize: typography.sizes.caption,
-    fontWeight: typography.weights.semibold,
-    lineHeight: typography.lineHeights.caption,
-  },
   label: {
     color: colors.textMuted,
     fontSize: typography.sizes.caption,
@@ -132,12 +105,6 @@ function createStyles(colors: AppColors) {
     letterSpacing: 0.7,
     lineHeight: typography.lineHeights.caption,
     textTransform: "uppercase",
-  },
-  value: {
-    color: colors.text,
-    fontSize: typography.sizes.title,
-    fontWeight: typography.weights.bold,
-    lineHeight: typography.lineHeights.title,
   },
   goalText: {
     color: colors.text,

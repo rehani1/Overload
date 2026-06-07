@@ -38,7 +38,6 @@ export default function SettingsScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Header
           title="Settings"
-          subtitle="Manage app preferences, sync state, and account actions."
           action={
             <Button icon="arrow-left" onPress={handleBack} variant="secondary">
               Back
@@ -47,27 +46,21 @@ export default function SettingsScreen() {
         />
 
         <Card title="Preferences">
-          <SettingsRow label="Training goal" value={profileUser.goal} />
           <SettingsRow label="Units" value={profileUser.unitPreference.toUpperCase()} />
           <SettingsToggleRow
-            helperText="Override your device appearance for this app."
+            helperText="Override system appearance."
             label="Dark mode"
             onValueChange={(enabled) => setThemePreference(enabled ? "dark" : "light")}
             value={isDark}
           />
         </Card>
 
-        <Card title="App Behavior">
+        <Card title="App">
           <SettingsRow label="Mode" value="Local" />
-          <SettingsRow label="Notifications" value="Quiet for now" />
-          <SettingsRow label="Data sync" value="Local until backend connects" />
+          <SettingsRow label="Sync" value="Not connected" />
         </Card>
 
-        <Card title="Account Actions">
-          <Text style={styles.mutedText}>
-            This keeps the demo profile local. Real authentication can plug in later without changing
-            the mobile logging flow.
-          </Text>
+        <Card title="Account">
           <Button icon="arrow-right-on-rectangle" onPress={handleLogout} variant="secondary">
             Log Out
           </Button>

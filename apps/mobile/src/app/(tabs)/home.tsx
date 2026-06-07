@@ -22,28 +22,14 @@ export default function HomeScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.hero}>
           <View style={styles.heroCopy}>
-            <Text style={styles.heroEyebrow}>Mobile companion</Text>
-            <Text style={styles.heroTitle}>Capture the essentials. Review the depth later.</Text>
-            <Text style={styles.heroSubtitle}>
-              Keep workouts and nutrition lightweight here so the future web dashboard has clean data
-              to analyze.
-            </Text>
+            <Text style={styles.heroEyebrow}>Overload</Text>
+            <Text style={styles.heroTitle}>Log today.</Text>
           </View>
 
           <View style={styles.heroActions}>
-            <Button icon="play" onPress={() => router.push("/workout/active")} variant="secondary">
+            <Button icon="play" onPress={() => router.push("/workout/active")}>
               Start Workout
             </Button>
-            <View style={styles.heroPillRow}>
-              <View style={styles.heroPill}>
-                <Icon color={colors.workout} name="fire" size={16} />
-                <Text style={styles.heroPillText}>Workout</Text>
-              </View>
-              <View style={styles.heroPill}>
-                <Icon color={colors.nutrition} name="cake" size={16} />
-                <Text style={styles.heroPillText}>Nutrition</Text>
-              </View>
-            </View>
           </View>
         </View>
 
@@ -81,7 +67,6 @@ function DateDetailsModal({ onClose, selectedDateKey }: DateDetailsModalProps) {
             <Text style={styles.modalTitle}>
               {selectedDateKey ? formatDateTitle(selectedDateKey) : ""}
             </Text>
-            <Text style={styles.modalSubtitle}>Add or adjust mobile entries for this calendar day.</Text>
           </View>
 
           <Pressable
@@ -128,19 +113,19 @@ function formatDateTitle(dateKey: string) {
 function createStyles(colors: AppColors) {
   return StyleSheet.create({
   content: {
-    gap: spacing.xl,
+    gap: spacing.lg,
     paddingBottom: spacing.xxl,
   },
   hero: {
     backgroundColor: colors.heroBackground,
     borderColor: "rgba(255, 252, 246, 0.18)",
-    borderRadius: 36,
+    borderRadius: 30,
     borderWidth: 1,
-    gap: spacing.xl,
-    padding: spacing.xl,
+    gap: spacing.lg,
+    padding: spacing.lg,
   },
   heroCopy: {
-    gap: spacing.md,
+    gap: spacing.xs,
   },
   heroEyebrow: {
     color: colors.primaryMuted,
@@ -157,35 +142,8 @@ function createStyles(colors: AppColors) {
     letterSpacing: -0.7,
     lineHeight: typography.lineHeights.display,
   },
-  heroSubtitle: {
-    color: colors.heroTextMuted,
-    fontSize: typography.sizes.body,
-    lineHeight: typography.lineHeights.body,
-  },
   heroActions: {
-    gap: spacing.md,
-  },
-  heroPillRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm,
-  },
-  heroPill: {
-    alignItems: "center",
-    backgroundColor: "rgba(255, 252, 246, 0.12)",
-    borderColor: "rgba(255, 252, 246, 0.2)",
-    borderRadius: 999,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: spacing.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  heroPillText: {
-    color: colors.onPrimary,
-    fontSize: typography.sizes.caption,
-    fontWeight: typography.weights.semibold,
-    lineHeight: typography.lineHeights.caption,
+    alignItems: "flex-start",
   },
   modalScreen: {
     backgroundColor: colors.background,
@@ -219,11 +177,6 @@ function createStyles(colors: AppColors) {
     fontSize: typography.sizes.title,
     fontWeight: typography.weights.bold,
     lineHeight: typography.lineHeights.title,
-  },
-  modalSubtitle: {
-    color: colors.textMuted,
-    fontSize: typography.sizes.body,
-    lineHeight: typography.lineHeights.body,
   },
   closeButton: {
     backgroundColor: colors.surfaceElevated,
