@@ -47,10 +47,9 @@ export function Button({
       accessibilityRole="button"
       disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [
+      style={[
         styles.button,
         selectedVariant.button,
-        pressed && styles.pressed,
         disabled && styles.disabled,
         style,
       ]}
@@ -77,8 +76,8 @@ function getVariantStyles(colors: AppColors) {
     },
     secondary: {
       button: {
-        backgroundColor: colors.surfaceElevated,
-        borderColor: colors.border,
+        backgroundColor: colors.surfaceMuted,
+        borderColor: colors.borderStrong,
       },
       text: {
         color: colors.text,
@@ -107,6 +106,14 @@ function createStyles(colors: AppColors) {
       paddingHorizontal: spacing.xl,
       paddingVertical: spacing.md,
       boxShadow: `0px 8px 18px ${colors.shadow}`,
+      elevation: 2,
+      shadowColor: colors.shadow,
+      shadowOffset: {
+        height: 4,
+        width: 0,
+      },
+      shadowOpacity: 1,
+      shadowRadius: 9,
     },
     content: {
       alignItems: "center",
@@ -119,9 +126,6 @@ function createStyles(colors: AppColors) {
       fontWeight: typography.weights.semibold,
       letterSpacing: 0.2,
       lineHeight: typography.lineHeights.small,
-    },
-    pressed: {
-      opacity: 0.84,
     },
     disabled: {
       opacity: 0.5,

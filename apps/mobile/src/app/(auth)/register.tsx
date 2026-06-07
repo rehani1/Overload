@@ -64,7 +64,11 @@ export default function RegisterScreen() {
 
         <View style={styles.footerRow}>
           <Text style={styles.footerText}>Already have an account?</Text>
-          <Pressable accessibilityRole="button" onPress={() => router.push("/login")}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push("/login")}
+            style={styles.authLinkButton}
+          >
             <Text style={styles.linkText}>Log in</Text>
           </Pressable>
         </View>
@@ -113,11 +117,22 @@ function createStyles(colors: AppColors) {
     lineHeight: typography.lineHeights.body,
   },
   linkText: {
-    color: colors.primary,
+    color: colors.text,
     fontSize: typography.sizes.body,
     fontWeight: typography.weights.semibold,
     lineHeight: typography.lineHeights.body,
     textAlign: "center",
+  },
+  authLinkButton: {
+    alignItems: "center",
+    backgroundColor: colors.surfaceElevated,
+    borderColor: colors.borderStrong,
+    borderRadius: 999,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: 44,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
   },
   });
 }
