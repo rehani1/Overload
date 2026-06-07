@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { router } from "expo-router";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle } from "react-native-svg";
 
 import { Button } from "@/components/Button";
@@ -13,9 +13,8 @@ import { typography } from "@/constants/typography";
 import { NutritionSection } from "@/features/nutrition/NutritionSection";
 import { WorkoutCalendar, WorkoutDateDetails } from "@/features/workouts/WorkoutCalendar";
 import { useNutritionStore } from "@/store/useNutritionStore";
-import { useWorkoutHistoryStore } from "@/store/useWorkoutHistoryStore";
 import { useThemeColors } from "@/theme/ThemeProvider";
-import type { Workout } from "@/types/workout";
+import type { NutritionEntry } from "@/types/nutrition";
 
 export default function HomeScreen() {
   const colors = useThemeColors();
@@ -26,8 +25,6 @@ export default function HomeScreen() {
     <Screen>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <TodayNutritionDashboard />
-
-        <LatestSessionCard />
 
         <WorkoutCalendar onDatePress={setSelectedDateKey} />
       </ScrollView>
@@ -46,63 +43,12 @@ export default function HomeScreen() {
   );
 }
 
-function LatestSessionCard() {
-  const { workouts } = useWorkoutHistoryStore();
-  const colors = useThemeColors();
-  const styles = createStyles(colors);
-  const latestWorkout = getLatestWorkout(workouts.filter((workout) => workout.status === "completed"));
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      disabled={!latestWorkout}
-      onPress={() => {
-        if (latestWorkout) {
-          router.push(`/workout/${latestWorkout.id}`);
-        }
-      }}
-      style={styles.latestSessionCard}
-    >
-      <View style={styles.latestSessionCopy}>
-        <Text style={styles.latestSessionEyebrow}>Latest session</Text>
-        <Text style={styles.latestSessionTitle}>{latestWorkout?.title ?? "No workout yet"}</Text>
-        <Text style={styles.latestSessionMeta}>
-          {latestWorkout
-            ? `${formatShortDate(latestWorkout.date)} · ${latestWorkout.exercises.length} exercises · ${countWorkoutSets(
-                latestWorkout,
-              )} sets`
-            : "Start a workout to build your training history."}
-        </Text>
-      </View>
-
-      <View style={styles.latestSessionIcon}>
-        <Icon color={colors.primary} name="fire" size={22} />
-      </View>
-    </Pressable>
-  );
-}
-
 function TodayNutritionDashboard() {
   const { entries, target } = useNutritionStore();
   const colors = useThemeColors();
   const styles = createStyles(colors);
   const todayKey = getDateKeyFromDate(new Date());
-  const totals = entries
-    .filter((entry) => entry.date === todayKey)
-    .reduce(
-      (dailyTotals, entry) => ({
-        calories: dailyTotals.calories + entry.calories,
-        carbsGrams: dailyTotals.carbsGrams + entry.carbsGrams,
-        fatGrams: dailyTotals.fatGrams + entry.fatGrams,
-        proteinGrams: dailyTotals.proteinGrams + entry.proteinGrams,
-      }),
-      {
-        calories: 0,
-        carbsGrams: 0,
-        fatGrams: 0,
-        proteinGrams: 0,
-      },
-    );
+  const totals = getNutritionTotals(entries.filter((entry) => entry.date === todayKey));
   const remainingCalories = Math.max(target.dailyCalories - totals.calories, 0);
   const calorieProgress = getProgressRatio(totals.calories, target.dailyCalories);
   const ringSize = 132;
@@ -205,8 +151,10 @@ type DateDetailsModalProps = {
 };
 
 function DateDetailsModal({ onClose, selectedDateKey }: DateDetailsModalProps) {
+  const insets = useSafeAreaInsets();
   const colors = useThemeColors();
   const styles = createStyles(colors);
+  const headerTopPadding = Math.max(insets.top, 58) + spacing.lg;
 
   return (
     <Modal
@@ -215,10 +163,9 @@ function DateDetailsModal({ onClose, selectedDateKey }: DateDetailsModalProps) {
       presentationStyle="fullScreen"
       visible={selectedDateKey !== null}
     >
-      <SafeAreaView edges={["top"]} style={styles.modalScreen}>
-        <View style={styles.modalHeader}>
+      <View style={styles.modalScreen}>
+        <View style={[styles.modalHeader, { paddingTop: headerTopPadding }]}>
           <View style={styles.modalTitleGroup}>
-            <Text style={styles.modalEyebrow}>Selected date</Text>
             <Text numberOfLines={2} style={styles.modalTitle}>
               {selectedDateKey ? formatDateTitle(selectedDateKey) : ""}
             </Text>
@@ -253,7 +200,7 @@ function DateDetailsModal({ onClose, selectedDateKey }: DateDetailsModalProps) {
             </>
           ) : null}
         </ScrollView>
-      </SafeAreaView>
+      </View>
     </Modal>
   );
 }
@@ -285,26 +232,25 @@ function getProgressRatio(current: number, target: number) {
   return Math.min(Math.max(current / target, 0), 1);
 }
 
-function countWorkoutSets(workout: Workout) {
-  return workout.exercises.reduce((total, workoutExercise) => total + workoutExercise.sets.length, 0);
-}
-
-function getLatestWorkout(workouts: Workout[]) {
-  return [...workouts].sort(
-    (firstWorkout, secondWorkout) =>
-      new Date(secondWorkout.date).getTime() - new Date(firstWorkout.date).getTime(),
-  )[0];
-}
-
-function formatShortDate(date: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-  }).format(new Date(date));
-}
-
 function formatNumber(value: number) {
   return Math.round(value).toLocaleString("en-US");
+}
+
+function getNutritionTotals(entries: NutritionEntry[]) {
+  return entries.reduce(
+    (dailyTotals, entry) => ({
+      calories: dailyTotals.calories + entry.calories,
+      carbsGrams: dailyTotals.carbsGrams + entry.carbsGrams,
+      fatGrams: dailyTotals.fatGrams + entry.fatGrams,
+      proteinGrams: dailyTotals.proteinGrams + entry.proteinGrams,
+    }),
+    {
+      calories: 0,
+      carbsGrams: 0,
+      fatGrams: 0,
+      proteinGrams: 0,
+    },
+  );
 }
 
 function createStyles(colors: AppColors) {
@@ -325,49 +271,6 @@ function createStyles(colors: AppColors) {
   },
   todaySection: {
     gap: spacing.md,
-  },
-  latestSessionCard: {
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 26,
-    borderWidth: 1,
-    boxShadow: `0px 10px 24px ${colors.shadow}`,
-    flexDirection: "row",
-    gap: spacing.md,
-    justifyContent: "space-between",
-    padding: spacing.lg,
-  },
-  latestSessionCopy: {
-    flex: 1,
-    gap: spacing.xs,
-    minWidth: 0,
-  },
-  latestSessionEyebrow: {
-    color: colors.textMuted,
-    fontSize: typography.sizes.caption,
-    fontWeight: typography.weights.semibold,
-    lineHeight: typography.lineHeights.caption,
-    textTransform: "uppercase",
-  },
-  latestSessionTitle: {
-    color: colors.text,
-    fontSize: typography.sizes.subtitle,
-    fontWeight: typography.weights.bold,
-    lineHeight: typography.lineHeights.subtitle,
-  },
-  latestSessionMeta: {
-    color: colors.textMuted,
-    fontSize: typography.sizes.small,
-    lineHeight: typography.lineHeights.small,
-  },
-  latestSessionIcon: {
-    alignItems: "center",
-    backgroundColor: colors.primaryMuted,
-    borderRadius: 18,
-    height: 44,
-    justifyContent: "center",
-    width: 44,
   },
   sectionTitle: {
     color: colors.text,
@@ -476,20 +379,11 @@ function createStyles(colors: AppColors) {
     justifyContent: "space-between",
     paddingHorizontal: spacing.xl,
     paddingBottom: spacing.md,
-    paddingTop: spacing.md,
   },
   modalTitleGroup: {
     flex: 1,
     gap: 2,
     minWidth: 0,
-  },
-  modalEyebrow: {
-    color: colors.textMuted,
-    fontSize: typography.sizes.caption,
-    fontWeight: typography.weights.semibold,
-    letterSpacing: 0.8,
-    lineHeight: typography.lineHeights.caption,
-    textTransform: "uppercase",
   },
   modalTitle: {
     color: colors.text,

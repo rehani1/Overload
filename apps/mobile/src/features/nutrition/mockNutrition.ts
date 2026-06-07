@@ -5,7 +5,7 @@ const today = now.slice(0, 10);
 
 export const defaultNutritionTarget: NutritionTarget = {
   id: "00000000-0000-4000-8000-000000000001",
-  dailyCalories: 2400,
+  dailyCalories: 2435,
   proteinGrams: 180,
   carbsGrams: 260,
   fatGrams: 75,
@@ -21,7 +21,7 @@ export const mockNutritionEntries: NutritionEntry[] = [
     mealType: "breakfast",
     foodName: "Greek yogurt bowl",
     servingQuantity: 1,
-    calories: 430,
+    calories: 434,
     proteinGrams: 38,
     carbsGrams: 48,
     fatGrams: 10,

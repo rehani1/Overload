@@ -28,6 +28,7 @@ type AuthStore = AuthState & {
   login: (input: LoginInput) => void;
   logout: () => void;
   register: (input: RegisterInput) => void;
+  updateUser: (updates: Partial<Pick<User, "goal" | "unitPreference">>) => User;
 };
 
 let state: AuthState = {
@@ -90,6 +91,22 @@ function logout() {
   void removeStoredJson(AUTH_STORAGE_KEY);
 }
 
+function updateUser(updates: Partial<Pick<User, "goal" | "unitPreference">>) {
+  const updatedUser: User = {
+    ...(state.user ?? mockUser),
+    ...updates,
+  };
+  const nextState: AuthState = {
+    isHydrated: true,
+    user: updatedUser,
+  };
+
+  emit(nextState);
+  void saveAuthState(nextState);
+
+  return updatedUser;
+}
+
 async function hydrateAuthState() {
   const storedState = await loadStoredJson<AuthState>(AUTH_STORAGE_KEY);
 
@@ -112,6 +129,7 @@ function buildStore(snapshot: AuthState): AuthStore {
     login,
     logout,
     register,
+    updateUser,
   };
 }
 

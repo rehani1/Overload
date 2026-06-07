@@ -69,6 +69,7 @@ function addEntry(draft: NutritionEntryDraft) {
   const now = new Date().toISOString();
   const entry: NutritionEntry = {
     ...draft,
+    calories: calculateMacroCalories(draft),
     id: createUuid(),
     createdAt: now,
     updatedAt: now,
@@ -117,6 +118,10 @@ function updateEntry(entryId: string, updates: NutritionEntryUpdate) {
   const updatedEntry: NutritionEntry = {
     ...entry,
     ...updates,
+    calories: calculateMacroCalories({
+      ...entry,
+      ...updates,
+    }),
     updatedAt: new Date().toISOString(),
   };
 
@@ -139,14 +144,15 @@ function updateTarget(updates: NutritionTargetUpdate) {
     ...updates,
     updatedAt: new Date().toISOString(),
   };
+  const normalizedTarget = normalizeTarget(updatedTarget);
 
   emitAndPersist({
     ...state,
     isHydrated: true,
-    target: updatedTarget,
+    target: normalizedTarget,
   });
 
-  return updatedTarget;
+  return normalizedTarget;
 }
 
 async function hydrateNutritionState() {
@@ -185,13 +191,35 @@ function mergeSeedEntries(entries: NutritionEntry[]) {
     (entry) => !existingEntryIds.has(entry.id),
   );
 
-  return sortEntries([...entries, ...missingSeedEntries]);
+  return sortEntries([...entries, ...missingSeedEntries].map(normalizeEntry));
 }
 
 function mergeStoredTarget(target?: NutritionTarget) {
-  return {
+  return normalizeTarget({
     ...defaultNutritionTarget,
     ...target,
+  });
+}
+
+function calculateMacroCalories({
+  carbsGrams,
+  fatGrams,
+  proteinGrams,
+}: Pick<NutritionEntry, "carbsGrams" | "fatGrams" | "proteinGrams">) {
+  return Math.round(proteinGrams * 4 + carbsGrams * 4 + fatGrams * 9);
+}
+
+function normalizeEntry(entry: NutritionEntry) {
+  return {
+    ...entry,
+    calories: calculateMacroCalories(entry),
+  };
+}
+
+function normalizeTarget(target: NutritionTarget) {
+  return {
+    ...target,
+    dailyCalories: calculateMacroCalories(target),
   };
 }
 

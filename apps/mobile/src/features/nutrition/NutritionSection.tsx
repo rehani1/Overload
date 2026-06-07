@@ -381,7 +381,7 @@ export function NutritionSection({
             {entriesForDate.length === 0 ? (
               <EmptyState
                 title="No nutrition entries"
-                message="Add a meal or snack to capture macros for this date."
+                message="Your default target still sets the daily goal. Add food to track progress for this date."
               />
             ) : (
               <View style={styles.entryList}>
@@ -537,16 +537,12 @@ function NutritionTargetModal({
         <ScrollView contentContainerStyle={styles.modalContent} showsVerticalScrollIndicator={false}>
           <View style={styles.inputGrid}>
             <Input
+              editable={false}
               keyboardType="numeric"
               label="Calories"
-              onChangeText={(value) =>
-                setTargetDraft((currentDraft) => ({
-                  ...currentDraft,
-                  dailyCalories: sanitizeIntegerInput(value),
-                }))
-              }
+              onChangeText={() => undefined}
               placeholder="2400"
-              value={targetDraft.dailyCalories}
+              value={String(calculateTargetDraftCalories(targetDraft))}
             />
             <Input
               keyboardType="decimal-pad"
@@ -737,7 +733,6 @@ function buildEntryDraft(
   formState: NutritionEntryEditorState,
   date: string,
 ): NutritionEntryDraft | null {
-  const calories = parseNonNegativeInteger(formState.calories);
   const carbsGrams = parseNonNegativeNumber(formState.carbsGrams);
   const fatGrams = parseNonNegativeNumber(formState.fatGrams);
   const proteinGrams = parseNonNegativeNumber(formState.proteinGrams);
@@ -746,7 +741,6 @@ function buildEntryDraft(
 
   if (
     !foodName ||
-    calories === null ||
     carbsGrams === null ||
     fatGrams === null ||
     proteinGrams === null ||
@@ -756,7 +750,7 @@ function buildEntryDraft(
   }
 
   return {
-    calories,
+    calories: calculateMacroCalories({ carbsGrams, fatGrams, proteinGrams }),
     carbsGrams,
     date,
     fatGrams,
@@ -769,13 +763,11 @@ function buildEntryDraft(
 }
 
 function buildTargetUpdate(formState: NutritionTargetFormState): NutritionTargetUpdate | null {
-  const dailyCalories = parseNonNegativeInteger(formState.dailyCalories);
   const carbsGrams = parseNonNegativeNumber(formState.carbsGrams);
   const fatGrams = parseNonNegativeNumber(formState.fatGrams);
   const proteinGrams = parseNonNegativeNumber(formState.proteinGrams);
 
   if (
-    dailyCalories === null ||
     carbsGrams === null ||
     fatGrams === null ||
     proteinGrams === null
@@ -785,7 +777,7 @@ function buildTargetUpdate(formState: NutritionTargetFormState): NutritionTarget
 
   return {
     carbsGrams,
-    dailyCalories,
+    dailyCalories: calculateMacroCalories({ carbsGrams, fatGrams, proteinGrams }),
     fatGrams,
     proteinGrams,
   };
@@ -837,10 +829,36 @@ function getNutritionTotals(entries: NutritionEntry[]): NutritionTotals {
 function getTargetFormState(target: NutritionTarget): NutritionTargetFormState {
   return {
     carbsGrams: String(target.carbsGrams),
-    dailyCalories: String(target.dailyCalories),
+    dailyCalories: String(
+      calculateMacroCalories({
+        carbsGrams: target.carbsGrams,
+        fatGrams: target.fatGrams,
+        proteinGrams: target.proteinGrams,
+      }),
+    ),
     fatGrams: String(target.fatGrams),
     proteinGrams: String(target.proteinGrams),
   };
+}
+
+function calculateTargetDraftCalories(formState: NutritionTargetFormState) {
+  return calculateMacroCalories({
+    carbsGrams: parseNonNegativeNumber(formState.carbsGrams) ?? 0,
+    fatGrams: parseNonNegativeNumber(formState.fatGrams) ?? 0,
+    proteinGrams: parseNonNegativeNumber(formState.proteinGrams) ?? 0,
+  });
+}
+
+function calculateMacroCalories({
+  carbsGrams,
+  fatGrams,
+  proteinGrams,
+}: {
+  carbsGrams: number;
+  fatGrams: number;
+  proteinGrams: number;
+}) {
+  return Math.round(proteinGrams * 4 + carbsGrams * 4 + fatGrams * 9);
 }
 
 function formatMealType(mealType: MealType) {
@@ -871,16 +889,6 @@ function getDateKeyFromDate(date: Date) {
 function parseDateKey(dateKey: string) {
   const [year, month, day] = dateKey.split("-").map(Number);
   return new Date(year, month - 1, day, 12);
-}
-
-function parseNonNegativeInteger(value: string) {
-  if (!/^\d+$/.test(value.trim())) {
-    return null;
-  }
-
-  const parsedValue = parseNonNegativeNumber(value);
-
-  return parsedValue === null ? null : parsedValue;
 }
 
 function parseNonNegativeNumber(value: string) {
@@ -924,10 +932,6 @@ function sanitizeDecimalInput(value: string) {
   }
 
   return `${wholeValue}.${decimalParts.join("")}`;
-}
-
-function sanitizeIntegerInput(value: string) {
-  return value.replace(/\D/g, "");
 }
 
 function createStyles(colors: AppColors) {

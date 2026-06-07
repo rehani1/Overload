@@ -49,6 +49,7 @@ export function NutritionEntryEditor({
   saveLabel = "Save",
 }: NutritionEntryEditorProps) {
   const styles = createStyles(useThemeColors());
+  const calculatedCalories = calculateDraftCalories(draft);
 
   return (
     <View style={styles.editor}>
@@ -87,10 +88,11 @@ export function NutritionEntryEditor({
           value={draft.servingQuantity}
         />
         <CompactTextInput
+          editable={false}
           keyboardType="numeric"
           label="Cal"
-          onChangeText={(calories) => onChange({ calories: sanitizeIntegerInput(calories) })}
-          value={draft.calories}
+          onChangeText={() => undefined}
+          value={String(calculatedCalories)}
         />
         <CompactTextInput
           keyboardType="decimal-pad"
@@ -142,6 +144,7 @@ export function NutritionEntryEditor({
 }
 
 type CompactTextInputProps = {
+  editable?: boolean;
   keyboardType?: KeyboardTypeOptions;
   label: string;
   onChangeText: (value: string) => void;
@@ -150,6 +153,7 @@ type CompactTextInputProps = {
 };
 
 function CompactTextInput({
+  editable = true,
   keyboardType = "default",
   label,
   onChangeText,
@@ -165,10 +169,11 @@ function CompactTextInput({
       <TextInput
         autoCapitalize="words"
         cursorColor={colors.primary}
+        editable={editable}
         keyboardType={keyboardType}
         onChangeText={onChangeText}
         placeholderTextColor={colors.textMuted}
-        style={styles.input}
+        style={[styles.input, !editable && styles.inputReadonly]}
         value={value}
       />
     </View>
@@ -177,6 +182,32 @@ function CompactTextInput({
 
 function formatMealType(mealType: MealType) {
   return mealType.charAt(0).toUpperCase() + mealType.slice(1);
+}
+
+function calculateDraftCalories(draft: NutritionEntryEditorState) {
+  return calculateMacroCalories({
+    carbsGrams: parseNonNegativeNumber(draft.carbsGrams),
+    fatGrams: parseNonNegativeNumber(draft.fatGrams),
+    proteinGrams: parseNonNegativeNumber(draft.proteinGrams),
+  });
+}
+
+function calculateMacroCalories({
+  carbsGrams,
+  fatGrams,
+  proteinGrams,
+}: {
+  carbsGrams: number;
+  fatGrams: number;
+  proteinGrams: number;
+}) {
+  return Math.round(proteinGrams * 4 + carbsGrams * 4 + fatGrams * 9);
+}
+
+function parseNonNegativeNumber(value: string) {
+  const parsedValue = Number(value);
+
+  return Number.isFinite(parsedValue) && parsedValue >= 0 ? parsedValue : 0;
 }
 
 function sanitizeDecimalInput(value: string) {
@@ -188,10 +219,6 @@ function sanitizeDecimalInput(value: string) {
   }
 
   return `${wholeValue}.${decimalParts.join("")}`;
-}
-
-function sanitizeIntegerInput(value: string) {
-  return value.replace(/\D/g, "");
 }
 
 function createStyles(colors: AppColors) {
@@ -254,6 +281,9 @@ function createStyles(colors: AppColors) {
       minHeight: 38,
       paddingHorizontal: spacing.sm,
       paddingVertical: spacing.xs,
+    },
+    inputReadonly: {
+      opacity: 0.78,
     },
     actionRow: {
       flexDirection: "row",

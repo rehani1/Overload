@@ -6,6 +6,7 @@ import { typography } from "@/constants/typography";
 import { useThemeColors } from "@/theme/ThemeProvider";
 
 type InputProps = {
+  editable?: boolean;
   label?: string;
   value: string;
   onChangeText: (value: string) => void;
@@ -15,6 +16,7 @@ type InputProps = {
 };
 
 export function Input({
+  editable = true,
   label,
   value,
   onChangeText,
@@ -31,12 +33,13 @@ export function Input({
       <TextInput
         autoCapitalize="none"
         cursorColor={colors.primary}
+        editable={editable}
         keyboardType={keyboardType}
         onChangeText={onChangeText}
         placeholder={placeholder}
         placeholderTextColor={colors.textMuted}
         secureTextEntry={secureTextEntry}
-        style={styles.input}
+        style={[styles.input, !editable && styles.inputReadonly]}
         value={value}
       />
     </View>
@@ -67,6 +70,9 @@ function createStyles(colors: AppColors) {
     minHeight: 54,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
+  },
+  inputReadonly: {
+    opacity: 0.78,
   },
   });
 }
