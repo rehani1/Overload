@@ -1,5 +1,13 @@
 import { useState } from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { isApiConfigured } from "@/api/client";
 import {
@@ -16,6 +24,10 @@ import { Input } from "@/components/Input";
 import type { AppColors } from "@/constants/colors";
 import { spacing } from "@/constants/spacing";
 import { typography } from "@/constants/typography";
+import {
+  NutritionEntryEditor,
+  type NutritionEntryEditorState,
+} from "@/features/nutrition/NutritionEntryEditor";
 import { useNutritionStore } from "@/store/useNutritionStore";
 import { useThemeColors } from "@/theme/ThemeProvider";
 import type {
@@ -31,17 +43,6 @@ type SyncState = {
   message: string;
 };
 
-type NutritionEntryFormState = {
-  calories: string;
-  carbsGrams: string;
-  fatGrams: string;
-  foodName: string;
-  mealType: MealType;
-  notes: string;
-  proteinGrams: string;
-  servingQuantity: string;
-};
-
 type NutritionTargetFormState = {
   carbsGrams: string;
   dailyCalories: string;
@@ -49,15 +50,15 @@ type NutritionTargetFormState = {
   proteinGrams: string;
 };
 
-const mealTypes: MealType[] = ["breakfast", "lunch", "dinner", "snack"];
-
 type NutritionSectionProps = {
+  isCompact?: boolean;
   selectedDate?: string;
   showDateControls?: boolean;
   showIntroCard?: boolean;
 };
 
 export function NutritionSection({
+  isCompact = false,
   selectedDate: selectedDateProp,
   showDateControls = true,
   showIntroCard = true,
@@ -75,12 +76,12 @@ export function NutritionSection({
   const colors = useThemeColors();
   const styles = createStyles(colors);
   const [localSelectedDate, setLocalSelectedDate] = useState(getDateKeyFromDate(new Date()));
-  const [entryDraft, setEntryDraft] = useState<NutritionEntryFormState>(
+  const [entryDraft, setEntryDraft] = useState<NutritionEntryEditorState>(
     getEmptyEntryFormState(),
   );
-  const [activeEntryModal, setActiveEntryModal] = useState<"add" | "edit" | null>(null);
+  const [activeEntryModal, setActiveEntryModal] = useState<"add" | null>(null);
   const [editingEntry, setEditingEntry] = useState<NutritionEntry | null>(null);
-  const [editDraft, setEditDraft] = useState<NutritionEntryFormState | null>(null);
+  const [editDraft, setEditDraft] = useState<NutritionEntryEditorState | null>(null);
   const [isTargetModalVisible, setIsTargetModalVisible] = useState(false);
   const [syncState, setSyncState] = useState<SyncState>({
     kind: "idle",
@@ -276,9 +277,13 @@ export function NutritionSection({
   }
 
   function startEntryEdit(entry: NutritionEntry) {
+    if (editingEntry?.id === entry.id) {
+      cancelEntryEdit();
+      return;
+    }
+
     setEditingEntry(entry);
     setEditDraft(getEntryFormState(entry));
-    setActiveEntryModal("edit");
   }
 
   function cancelEntryEdit() {
@@ -288,17 +293,18 @@ export function NutritionSection({
   }
 
   function openAddEntryModal() {
+    cancelEntryEdit();
     setEntryDraft(getEmptyEntryFormState());
     setActiveEntryModal("add");
   }
 
   return (
-    <View style={styles.content}>
+    <View style={[styles.content, isCompact && styles.compactContent]}>
       {!isHydrated ? (
         <EmptyState title="Loading nutrition" message="Preparing local nutrition history." />
       ) : (
         <>
-          <Card title="Nutrition">
+          <Card title="Nutrition" style={isCompact && styles.compactCard}>
             {showIntroCard ? (
               <Text style={styles.mutedText}>Capture meals quickly; detailed trends belong on web.</Text>
             ) : null}
@@ -327,24 +333,28 @@ export function NutritionSection({
 
             <View style={styles.metricGrid}>
               <NutritionMetric
+                isCompact={isCompact}
                 label="Calories"
                 target={target.dailyCalories}
                 unit=""
                 value={totals.calories}
               />
               <NutritionMetric
+                isCompact={isCompact}
                 label="Protein"
                 target={target.proteinGrams}
                 unit="g"
                 value={totals.proteinGrams}
               />
               <NutritionMetric
+                isCompact={isCompact}
                 label="Carbs"
                 target={target.carbsGrams}
                 unit="g"
                 value={totals.carbsGrams}
               />
               <NutritionMetric
+                isCompact={isCompact}
                 label="Fat"
                 target={target.fatGrams}
                 unit="g"
@@ -352,9 +362,16 @@ export function NutritionSection({
               />
             </View>
 
-            <View style={styles.actionRow}>
-              <Button icon="plus" onPress={openAddEntryModal}>Add Food</Button>
-              <Button icon="pencil-square" onPress={() => setIsTargetModalVisible(true)} variant="secondary">
+            <View style={[styles.actionRow, isCompact && styles.compactActionRow]}>
+              <Button icon="plus" onPress={openAddEntryModal} style={isCompact && styles.compactActionButton}>
+                Add Food
+              </Button>
+              <Button
+                icon="pencil-square"
+                onPress={() => setIsTargetModalVisible(true)}
+                style={isCompact && styles.compactActionButton}
+                variant="secondary"
+              >
                 Edit Targets
               </Button>
             </View>
@@ -370,8 +387,28 @@ export function NutritionSection({
               <View style={styles.entryList}>
                 {entriesForDate.map((entry) => (
                   <NutritionEntryItem
+                    draft={editingEntry?.id === entry.id ? editDraft : null}
                     entry={entry}
+                    isExpanded={editingEntry?.id === entry.id}
+                    isCompact={isCompact}
                     key={entry.id}
+                    onCancel={cancelEntryEdit}
+                    onChange={(updates) => {
+                      setEditDraft((currentDraft) =>
+                        currentDraft
+                          ? {
+                              ...currentDraft,
+                              ...updates,
+                            }
+                          : currentDraft,
+                      );
+                    }}
+                    onDelete={() => {
+                      void handleDeleteEntry(entry);
+                    }}
+                    onSave={() => {
+                      void handleSaveEntry(entry);
+                    }}
                     onStartEdit={() => startEntryEdit(entry)}
                   />
                 ))}
@@ -380,43 +417,18 @@ export function NutritionSection({
           </Card>
 
           <NutritionEntryModal
-            draft={activeEntryModal === "edit" && editDraft ? editDraft : entryDraft}
+            draft={entryDraft}
             mode={activeEntryModal}
-            onChange={(updates) => {
-              if (activeEntryModal === "edit") {
-                setEditDraft((currentDraft) =>
-                  currentDraft
-                    ? {
-                        ...currentDraft,
-                        ...updates,
-                      }
-                    : currentDraft,
-                );
-                return;
-              }
-
+            onChange={(updates) =>
               setEntryDraft((currentDraft) => ({
                 ...currentDraft,
                 ...updates,
-              }));
-            }}
+              }))
+            }
             onClose={() => {
               setActiveEntryModal(null);
-              cancelEntryEdit();
             }}
-            onDelete={
-              editingEntry
-                ? () => {
-                    void handleDeleteEntry(editingEntry);
-                  }
-                : undefined
-            }
             onSubmit={() => {
-              if (activeEntryModal === "edit" && editingEntry) {
-                void handleSaveEntry(editingEntry);
-                return;
-              }
-
               void handleAddEntry();
             }}
           />
@@ -443,21 +455,28 @@ export function NutritionSection({
 }
 
 type NutritionMetricProps = {
+  isCompact?: boolean;
   label: string;
   target: number;
   unit: string;
   value: number;
 };
 
-function NutritionMetric({ label, target, unit, value }: NutritionMetricProps) {
+function NutritionMetric({
+  isCompact = false,
+  label,
+  target,
+  unit,
+  value,
+}: NutritionMetricProps) {
   const colors = useThemeColors();
   const styles = createStyles(colors);
   const progress = target > 0 ? Math.min(value / target, 1) : 0;
 
   return (
-    <View style={styles.metricCard}>
+    <View style={[styles.metricCard, isCompact && styles.compactMetricCard]}>
       <Text style={styles.label}>{label}</Text>
-      <Text style={styles.metricValue}>
+      <Text style={[styles.metricValue, isCompact && styles.compactMetricValue]}>
         {formatNumber(value)}
         {unit}
       </Text>
@@ -498,19 +517,20 @@ function NutritionTargetModal({
       presentationStyle="pageSheet"
       visible={isVisible}
     >
-      <View style={styles.modalScreen}>
+      <SafeAreaView edges={["top"]} style={styles.modalScreen}>
         <View style={styles.modalHeader}>
           <View style={styles.modalTitleGroup}>
             <Text style={styles.modalEyebrow}>Nutrition</Text>
-            <Text style={styles.modalTitle}>Edit Targets</Text>
+            <Text numberOfLines={2} style={styles.modalTitle}>Edit Targets</Text>
           </View>
           <Pressable
+            accessibilityLabel="Close nutrition targets"
             accessibilityRole="button"
+            hitSlop={8}
             onPress={onClose}
-            style={({ pressed }) => [styles.closeButton, pressed && styles.pressed]}
+            style={styles.closeButton}
           >
-            <Icon color={colors.text} name="x-mark" size={18} />
-            <Text style={styles.closeButtonText}>Close</Text>
+            <Icon color={colors.text} name="x-mark" size={20} />
           </Pressable>
         </View>
 
@@ -522,7 +542,7 @@ function NutritionTargetModal({
               onChangeText={(value) =>
                 setTargetDraft((currentDraft) => ({
                   ...currentDraft,
-                  dailyCalories: value,
+                  dailyCalories: sanitizeIntegerInput(value),
                 }))
               }
               placeholder="2400"
@@ -534,7 +554,7 @@ function NutritionTargetModal({
               onChangeText={(value) =>
                 setTargetDraft((currentDraft) => ({
                   ...currentDraft,
-                  proteinGrams: value,
+                  proteinGrams: sanitizeDecimalInput(value),
                 }))
               }
               placeholder="180"
@@ -546,7 +566,7 @@ function NutritionTargetModal({
               onChangeText={(value) =>
                 setTargetDraft((currentDraft) => ({
                   ...currentDraft,
-                  carbsGrams: value,
+                  carbsGrams: sanitizeDecimalInput(value),
                 }))
               }
               placeholder="260"
@@ -558,7 +578,7 @@ function NutritionTargetModal({
               onChangeText={(value) =>
                 setTargetDraft((currentDraft) => ({
                   ...currentDraft,
-                  fatGrams: value,
+                  fatGrams: sanitizeDecimalInput(value),
                 }))
               }
               placeholder="75"
@@ -567,24 +587,16 @@ function NutritionTargetModal({
           </View>
           <Button icon="check" onPress={() => onSave(targetDraft)}>Save Targets</Button>
         </ScrollView>
-      </View>
+      </SafeAreaView>
     </Modal>
   );
 }
 
-type NutritionEntryFormProps = {
-  draft: NutritionEntryFormState;
-  onChange: (updates: Partial<NutritionEntryFormState>) => void;
-  onSubmit: () => void;
-  submitLabel: string;
-};
-
 type NutritionEntryModalProps = {
-  draft: NutritionEntryFormState;
-  mode: "add" | "edit" | null;
-  onChange: (updates: Partial<NutritionEntryFormState>) => void;
+  draft: NutritionEntryEditorState;
+  mode: "add" | null;
+  onChange: (updates: Partial<NutritionEntryEditorState>) => void;
   onClose: () => void;
-  onDelete?: () => void;
   onSubmit: () => void;
 };
 
@@ -593,12 +605,10 @@ function NutritionEntryModal({
   mode,
   onChange,
   onClose,
-  onDelete,
   onSubmit,
 }: NutritionEntryModalProps) {
   const colors = useThemeColors();
   const styles = createStyles(colors);
-  const isEditing = mode === "edit";
 
   return (
     <Modal
@@ -607,168 +617,107 @@ function NutritionEntryModal({
       presentationStyle="pageSheet"
       visible={mode !== null}
     >
-      <View style={styles.modalScreen}>
+      <SafeAreaView edges={["top"]} style={styles.modalScreen}>
         <View style={styles.modalHeader}>
           <View style={styles.modalTitleGroup}>
             <Text style={styles.modalEyebrow}>Nutrition</Text>
-            <Text style={styles.modalTitle}>{isEditing ? "Edit Food" : "Add Food"}</Text>
+            <Text numberOfLines={2} style={styles.modalTitle}>Add Food</Text>
           </View>
           <Pressable
+            accessibilityLabel="Close food editor"
             accessibilityRole="button"
+            hitSlop={8}
             onPress={onClose}
-            style={({ pressed }) => [styles.closeButton, pressed && styles.pressed]}
+            style={styles.closeButton}
           >
-            <Icon color={colors.text} name="x-mark" size={18} />
-            <Text style={styles.closeButtonText}>Close</Text>
+            <Icon color={colors.text} name="x-mark" size={20} />
           </Pressable>
         </View>
 
         <ScrollView contentContainerStyle={styles.modalContent} showsVerticalScrollIndicator={false}>
-          <NutritionEntryForm
+          <NutritionEntryEditor
+            cancelLabel="Cancel"
             draft={draft}
             onChange={onChange}
-            onSubmit={onSubmit}
-            submitLabel={isEditing ? "Save Food" : "Add Food"}
+            onCancel={onClose}
+            onSave={onSubmit}
+            saveLabel="Add Food"
           />
-
-          {isEditing && onDelete ? (
-            <Button icon="trash" onPress={onDelete} variant="danger">
-              Delete Food
-            </Button>
-          ) : null}
         </ScrollView>
-      </View>
+      </SafeAreaView>
     </Modal>
   );
 }
 
-function NutritionEntryForm({
-  draft,
-  onChange,
-  onSubmit,
-  submitLabel,
-}: NutritionEntryFormProps) {
-  const colors = useThemeColors();
-  const styles = createStyles(colors);
-
-  return (
-    <View style={styles.form}>
-      <View style={styles.mealTypeRow}>
-        {mealTypes.map((mealType) => {
-          const isSelected = draft.mealType === mealType;
-
-          return (
-            <Pressable
-              accessibilityRole="button"
-              key={mealType}
-              onPress={() => onChange({ mealType })}
-              style={({ pressed }) => [
-                styles.mealTypeChip,
-                isSelected && styles.selectedMealTypeChip,
-                pressed && styles.pressed,
-              ]}
-            >
-              <Text style={[styles.mealTypeText, isSelected && styles.selectedMealTypeText]}>
-                {formatMealType(mealType)}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-
-      <Input
-        label="Food"
-        onChangeText={(value) => onChange({ foodName: value })}
-        placeholder="Chicken rice bowl"
-        value={draft.foodName}
-      />
-
-      <View style={styles.inputGrid}>
-        <Input
-          keyboardType="decimal-pad"
-          label="Servings"
-          onChangeText={(value) => onChange({ servingQuantity: value })}
-          placeholder="1"
-          value={draft.servingQuantity}
-        />
-        <Input
-          keyboardType="numeric"
-          label="Calories"
-          onChangeText={(value) => onChange({ calories: value })}
-          placeholder="650"
-          value={draft.calories}
-        />
-        <Input
-          keyboardType="decimal-pad"
-          label="Protein"
-          onChangeText={(value) => onChange({ proteinGrams: value })}
-          placeholder="45"
-          value={draft.proteinGrams}
-        />
-        <Input
-          keyboardType="decimal-pad"
-          label="Carbs"
-          onChangeText={(value) => onChange({ carbsGrams: value })}
-          placeholder="70"
-          value={draft.carbsGrams}
-        />
-        <Input
-          keyboardType="decimal-pad"
-          label="Fat"
-          onChangeText={(value) => onChange({ fatGrams: value })}
-          placeholder="18"
-          value={draft.fatGrams}
-        />
-      </View>
-
-      <Input
-        label="Notes"
-        onChangeText={(value) => onChange({ notes: value })}
-        placeholder="Optional"
-        value={draft.notes}
-      />
-
-      <Button icon="check" onPress={onSubmit}>{submitLabel}</Button>
-    </View>
-  );
-}
-
 type NutritionEntryItemProps = {
+  draft: NutritionEntryEditorState | null;
   entry: NutritionEntry;
+  isExpanded: boolean;
+  isCompact?: boolean;
+  onCancel: () => void;
+  onChange: (updates: Partial<NutritionEntryEditorState>) => void;
+  onDelete: () => void;
+  onSave: () => void;
   onStartEdit: () => void;
 };
 
 function NutritionEntryItem({
+  draft,
   entry,
+  isExpanded,
+  isCompact = false,
+  onCancel,
+  onChange,
+  onDelete,
+  onSave,
   onStartEdit,
 }: NutritionEntryItemProps) {
   const colors = useThemeColors();
   const styles = createStyles(colors);
 
   return (
-    <View style={styles.entryItem}>
-      <View style={styles.entryHeader}>
-        <View style={styles.entryCopy}>
-          <Text style={styles.entryTitle}>{entry.foodName}</Text>
-          <Text style={styles.mutedText}>
-            {formatMealType(entry.mealType)} · {formatNumber(entry.servingQuantity)} serving
-          </Text>
+    <View style={[styles.entryItem, isCompact && styles.compactEntryItem]}>
+      <Pressable
+        accessibilityLabel={`${entry.foodName}, ${isExpanded ? "collapse" : "expand"}`}
+        accessibilityRole="button"
+        onPress={onStartEdit}
+        style={styles.expandableEntrySummary}
+      >
+        <View style={styles.entryHeader}>
+          <View style={styles.entryCopy}>
+            <Text style={styles.entryTitle}>{entry.foodName}</Text>
+            <Text style={styles.mutedText}>
+              {formatMealType(entry.mealType)} · {formatNumber(entry.servingQuantity)} serving
+            </Text>
+          </View>
+          <View style={styles.entryMetaGroup}>
+            <View style={styles.caloriePill}>
+              <Text style={styles.caloriePillText}>{entry.calories} cal</Text>
+            </View>
+            <Icon
+              color={colors.textMuted}
+              name={isExpanded ? "chevron-up" : "chevron-down"}
+              size={18}
+            />
+          </View>
         </View>
-        <View style={styles.caloriePill}>
-          <Text style={styles.caloriePillText}>{entry.calories} cal</Text>
-        </View>
-      </View>
-      <Text style={styles.bodyText}>
-        P {formatNumber(entry.proteinGrams)}g · C{" "}
-        {formatNumber(entry.carbsGrams)}g · F {formatNumber(entry.fatGrams)}g
-      </Text>
-      {entry.notes ? <Text style={styles.mutedText}>{entry.notes}</Text> : null}
 
-      <View style={styles.actionRow}>
-        <Button icon="pencil-square" onPress={onStartEdit} variant="secondary">
-          Edit
-        </Button>
-      </View>
+        <Text style={styles.bodyText}>
+          P {formatNumber(entry.proteinGrams)}g · C{" "}
+          {formatNumber(entry.carbsGrams)}g · F {formatNumber(entry.fatGrams)}g
+        </Text>
+        {entry.notes ? <Text style={styles.mutedText}>{entry.notes}</Text> : null}
+      </Pressable>
+
+      {isExpanded && draft ? (
+        <NutritionEntryEditor
+          draft={draft}
+          onCancel={onCancel}
+          onChange={onChange}
+          onDelete={onDelete}
+          onSave={onSave}
+        />
+      ) : null}
     </View>
   );
 }
@@ -785,7 +734,7 @@ function addDays(date: Date, offset: number) {
 }
 
 function buildEntryDraft(
-  formState: NutritionEntryFormState,
+  formState: NutritionEntryEditorState,
   date: string,
 ): NutritionEntryDraft | null {
   const calories = parseNonNegativeInteger(formState.calories);
@@ -842,7 +791,7 @@ function buildTargetUpdate(formState: NutritionTargetFormState): NutritionTarget
   };
 }
 
-function getEmptyEntryFormState(mealType: MealType = "breakfast"): NutritionEntryFormState {
+function getEmptyEntryFormState(mealType: MealType = "breakfast"): NutritionEntryEditorState {
   return {
     calories: "",
     carbsGrams: "",
@@ -855,7 +804,7 @@ function getEmptyEntryFormState(mealType: MealType = "breakfast"): NutritionEntr
   };
 }
 
-function getEntryFormState(entry: NutritionEntry): NutritionEntryFormState {
+function getEntryFormState(entry: NutritionEntry): NutritionEntryEditorState {
   return {
     calories: String(entry.calories),
     carbsGrams: String(entry.carbsGrams),
@@ -925,9 +874,13 @@ function parseDateKey(dateKey: string) {
 }
 
 function parseNonNegativeInteger(value: string) {
+  if (!/^\d+$/.test(value.trim())) {
+    return null;
+  }
+
   const parsedValue = parseNonNegativeNumber(value);
 
-  return parsedValue === null ? null : Math.round(parsedValue);
+  return parsedValue === null ? null : parsedValue;
 }
 
 function parseNonNegativeNumber(value: string) {
@@ -962,13 +915,33 @@ function parsePositiveNumber(value: string) {
   return Math.round(parsedValue * 10) / 10;
 }
 
+function sanitizeDecimalInput(value: string) {
+  const cleanedValue = value.replaceAll(",", ".").replace(/[^\d.]/g, "");
+  const [wholeValue, ...decimalParts] = cleanedValue.split(".");
+
+  if (decimalParts.length === 0) {
+    return wholeValue;
+  }
+
+  return `${wholeValue}.${decimalParts.join("")}`;
+}
+
+function sanitizeIntegerInput(value: string) {
+  return value.replace(/\D/g, "");
+}
+
 function createStyles(colors: AppColors) {
   return StyleSheet.create({
   content: {
     gap: spacing.xl,
   },
-  form: {
-    gap: spacing.lg,
+  compactContent: {
+    gap: spacing.md,
+  },
+  compactCard: {
+    borderRadius: 24,
+    gap: spacing.md,
+    padding: spacing.lg,
   },
   actionRow: {
     flexDirection: "row",
@@ -1004,32 +977,6 @@ function createStyles(colors: AppColors) {
     marginTop: spacing.sm,
     textTransform: "uppercase",
   },
-  mealTypeRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm,
-  },
-  mealTypeChip: {
-    backgroundColor: colors.surfaceElevated,
-    borderColor: colors.border,
-    borderRadius: 999,
-    borderWidth: 1,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  mealTypeText: {
-    color: colors.textMuted,
-    fontSize: typography.sizes.caption,
-    fontWeight: typography.weights.semibold,
-    lineHeight: typography.lineHeights.caption,
-  },
-  selectedMealTypeChip: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  selectedMealTypeText: {
-    color: colors.onPrimary,
-  },
   metricGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -1045,11 +992,20 @@ function createStyles(colors: AppColors) {
     gap: spacing.sm,
     padding: spacing.lg,
   },
+  compactMetricCard: {
+    borderRadius: 18,
+    gap: spacing.xs,
+    padding: spacing.md,
+  },
   metricValue: {
     color: colors.text,
     fontSize: typography.sizes.title,
     fontWeight: typography.weights.bold,
     lineHeight: typography.lineHeights.title,
+  },
+  compactMetricValue: {
+    fontSize: typography.sizes.subtitle,
+    lineHeight: typography.lineHeights.subtitle,
   },
   progressTrack: {
     backgroundColor: colors.surfaceMuted,
@@ -1058,7 +1014,7 @@ function createStyles(colors: AppColors) {
     overflow: "hidden",
   },
   progressFill: {
-    backgroundColor: colors.nutrition,
+    backgroundColor: colors.primary,
     borderRadius: 999,
     height: 8,
   },
@@ -1067,19 +1023,20 @@ function createStyles(colors: AppColors) {
     flex: 1,
   },
   modalHeader: {
-    alignItems: "flex-start",
+    alignItems: "center",
     borderBottomColor: colors.border,
     borderBottomWidth: 1,
     flexDirection: "row",
-    gap: spacing.lg,
+    gap: spacing.md,
     justifyContent: "space-between",
-    paddingBottom: spacing.lg,
+    paddingBottom: spacing.md,
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xxl,
+    paddingTop: spacing.md,
   },
   modalTitleGroup: {
     flex: 1,
-    gap: spacing.xs,
+    gap: 2,
+    minWidth: 0,
   },
   modalEyebrow: {
     color: colors.textMuted,
@@ -1091,36 +1048,30 @@ function createStyles(colors: AppColors) {
   },
   modalTitle: {
     color: colors.text,
-    fontSize: typography.sizes.title,
+    fontSize: 22,
     fontWeight: typography.weights.bold,
-    lineHeight: typography.lineHeights.title,
+    lineHeight: 28,
   },
   modalContent: {
-    gap: spacing.xl,
-    padding: spacing.xl,
-    paddingBottom: spacing.xxl,
+    gap: spacing.lg,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.xxxl,
+    paddingTop: spacing.lg,
   },
   closeButton: {
+    alignItems: "center",
     backgroundColor: colors.surfaceElevated,
     borderColor: colors.border,
     borderRadius: 999,
     borderWidth: 1,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  closeButtonText: {
-    color: colors.text,
-    fontSize: typography.sizes.body,
-    fontWeight: typography.weights.semibold,
-    lineHeight: typography.lineHeights.body,
+    height: 44,
+    justifyContent: "center",
+    width: 44,
   },
   mutedText: {
     color: colors.textMuted,
     fontSize: typography.sizes.body,
     lineHeight: typography.lineHeights.body,
-  },
-  pressed: {
-    opacity: 0.84,
   },
   entryList: {
     gap: spacing.md,
@@ -1133,6 +1084,14 @@ function createStyles(colors: AppColors) {
     gap: spacing.md,
     padding: spacing.lg,
   },
+  compactEntryItem: {
+    borderRadius: 18,
+    gap: spacing.sm,
+    padding: spacing.md,
+  },
+  expandableEntrySummary: {
+    gap: spacing.sm,
+  },
   entryHeader: {
     alignItems: "flex-start",
     flexDirection: "row",
@@ -1143,6 +1102,11 @@ function createStyles(colors: AppColors) {
     flex: 1,
     gap: spacing.xs,
   },
+  entryMetaGroup: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
   entryTitle: {
     color: colors.text,
     fontSize: typography.sizes.subtitle,
@@ -1150,8 +1114,8 @@ function createStyles(colors: AppColors) {
     lineHeight: typography.lineHeights.subtitle,
   },
   caloriePill: {
-    backgroundColor: colors.coralMuted,
-    borderColor: colors.coral,
+    backgroundColor: colors.primaryMuted,
+    borderColor: colors.primary,
     borderRadius: 999,
     borderWidth: 1,
     paddingHorizontal: spacing.md,
@@ -1163,14 +1127,14 @@ function createStyles(colors: AppColors) {
     fontWeight: typography.weights.semibold,
     lineHeight: typography.lineHeights.caption,
   },
-  editBox: {
-    backgroundColor: colors.surfaceElevated,
-    borderColor: colors.border,
-    borderRadius: 24,
-    borderWidth: 1,
-    gap: spacing.md,
-    marginTop: spacing.sm,
-    padding: spacing.md,
+  compactActionRow: {
+    gap: spacing.sm,
+    marginTop: 0,
+  },
+  compactActionButton: {
+    minHeight: 44,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
   },
   });
 }

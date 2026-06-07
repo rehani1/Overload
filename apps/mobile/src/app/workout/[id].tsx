@@ -33,9 +33,23 @@ export default function WorkoutDetailScreen() {
     router.push("/workout/active");
   }
 
+  function handleBack() {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+
+    router.replace("/home");
+  }
+
   if (!workout) {
     return (
       <Screen>
+        <View style={styles.backAction}>
+          <Button icon="arrow-left" variant="secondary" onPress={handleBack}>
+            Back
+          </Button>
+        </View>
         <Header title="Workout Detail" subtitle="This workout could not be found." />
         <Card title="Not found">
           <EmptyState title="Workout not found" message="Return to Workouts and choose another session." />
@@ -47,6 +61,12 @@ export default function WorkoutDetailScreen() {
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.backAction}>
+          <Button icon="arrow-left" variant="secondary" onPress={handleBack}>
+            Back
+          </Button>
+        </View>
+
         <View style={styles.hero}>
           <Text style={styles.heroEyebrow}>Workout archive</Text>
           <Text style={styles.heroTitle}>{workout.title}</Text>
@@ -104,6 +124,9 @@ function createStyles(colors: AppColors) {
   content: {
     gap: spacing.xl,
     paddingBottom: spacing.xxl,
+  },
+  backAction: {
+    alignItems: "flex-start",
   },
   hero: {
     backgroundColor: colors.heroBackground,

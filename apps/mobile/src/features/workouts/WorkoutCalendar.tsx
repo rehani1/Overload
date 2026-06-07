@@ -1,5 +1,13 @@
 import { useState } from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { isApiConfigured } from "@/api/client";
 import {
@@ -19,7 +27,7 @@ import { useThemeColors } from "@/theme/ThemeProvider";
 import type { NutritionEntry } from "@/types/nutrition";
 import type { Workout } from "@/types/workout";
 
-import { WorkoutCalendarEditor } from "./WorkoutCalendarEditor";
+import { WorkoutEditor } from "./WorkoutEditor";
 
 type SyncState = {
   kind: "idle" | "pending" | "success" | "error";
@@ -269,10 +277,14 @@ export function WorkoutCalendar({ onDatePress }: WorkoutCalendarProps) {
 }
 
 type WorkoutDateDetailsProps = {
+  isCompact?: boolean;
   selectedDateKey: string;
 };
 
-export function WorkoutDateDetails({ selectedDateKey }: WorkoutDateDetailsProps) {
+export function WorkoutDateDetails({
+  isCompact = false,
+  selectedDateKey,
+}: WorkoutDateDetailsProps) {
   const {
     addCompletedWorkout,
     deleteWorkout,
@@ -333,6 +345,11 @@ export function WorkoutDateDetails({ selectedDateKey }: WorkoutDateDetailsProps)
   }
 
   function handleStartEdit(workout: Workout) {
+    if (editingWorkout?.id === workout.id) {
+      handleCancelEdit();
+      return;
+    }
+
     setEditingWorkout(workout);
     setIsDeletePending(false);
     setDraftWorkout(cloneWorkout(workout));
@@ -342,6 +359,10 @@ export function WorkoutDateDetails({ selectedDateKey }: WorkoutDateDetailsProps)
     setEditingWorkout(null);
     setIsDeletePending(false);
     setDraftWorkout(createEmptyWorkout(selectedDateKey));
+  }
+
+  function handleUpdateDraftWorkout(updater: (workout: Workout) => Workout) {
+    setDraftWorkout((currentDraft) => (currentDraft ? updater(currentDraft) : currentDraft));
   }
 
   async function handleCreateWorkout() {
@@ -455,15 +476,17 @@ export function WorkoutDateDetails({ selectedDateKey }: WorkoutDateDetailsProps)
   }
 
   return (
-    <View style={styles.content}>
-      <Card title="Workout">
+    <View style={[styles.content, isCompact && styles.compactDetailsContent]}>
+      <Card title="Workout" style={isCompact && styles.compactDetailsCard}>
         {syncState.kind !== "idle" ? (
           <Text style={[styles.syncText, syncState.kind === "error" && styles.errorText]}>
             {syncState.message}
           </Text>
         ) : null}
-        <View style={styles.actionRow}>
-          <Button icon="plus" onPress={handleStartAdd}>Add Workout</Button>
+        <View style={[styles.actionRow, isCompact && styles.compactActionRow]}>
+          <Button icon="plus" onPress={handleStartAdd} style={isCompact && styles.compactActionButton}>
+            Add Workout
+          </Button>
         </View>
         {selectedWorkouts.length === 0 ? (
           <View style={styles.emptyInline}>
@@ -474,8 +497,22 @@ export function WorkoutDateDetails({ selectedDateKey }: WorkoutDateDetailsProps)
           <View style={styles.sessionList}>
             {selectedWorkouts.map((workout) => (
               <WorkoutCalendarItem
+                draftWorkout={editingWorkout?.id === workout.id ? draftWorkout : null}
+                isCompact={isCompact}
+                isDeletePending={editingWorkout?.id === workout.id && isDeletePending}
+                isExpanded={editingWorkout?.id === workout.id}
                 key={workout.id}
+                onCancelEdit={handleCancelEdit}
+                onCancelDelete={() => setIsDeletePending(false)}
+                onConfirmDelete={() => {
+                  void handleConfirmDelete(workout);
+                }}
+                onRequestDelete={() => setIsDeletePending(true)}
+                onSave={() => {
+                  void handleSaveWorkout(workout);
+                }}
                 onStartEdit={() => handleStartEdit(workout)}
+                onUpdateDraftWorkout={handleUpdateDraftWorkout}
                 workout={workout}
               />
             ))}
@@ -487,84 +524,69 @@ export function WorkoutDateDetails({ selectedDateKey }: WorkoutDateDetailsProps)
         animationType="slide"
         onRequestClose={handleCancelEdit}
         presentationStyle="pageSheet"
-        visible={draftWorkout !== null}
+        visible={draftWorkout !== null && editingWorkout === null}
       >
-        <View style={styles.modalScreen}>
+        <SafeAreaView edges={["top"]} style={styles.modalScreen}>
           <View style={styles.modalHeader}>
             <View style={styles.modalTitleGroup}>
               <Text style={styles.modalEyebrow}>Workout</Text>
-              <Text style={styles.modalTitle}>
-                {editingWorkout ? `Edit ${editingWorkout.title}` : "Add Workout"}
-              </Text>
+              <Text numberOfLines={2} style={styles.modalTitle}>Add Workout</Text>
             </View>
             <Pressable
+              accessibilityLabel="Close workout editor"
               accessibilityRole="button"
+              hitSlop={8}
               onPress={handleCancelEdit}
               style={styles.closeButton}
             >
-              <Icon color={colors.text} name="x-mark" size={18} />
-              <Text style={styles.closeButtonText}>Close</Text>
+              <Icon color={colors.text} name="x-mark" size={20} />
             </Pressable>
           </View>
 
           <ScrollView contentContainerStyle={styles.modalContent} showsVerticalScrollIndicator={false}>
             {draftWorkout ? (
-              <>
-                <WorkoutCalendarEditor
-                  draftWorkout={draftWorkout}
-                  onCancel={handleCancelEdit}
-                  onDelete={editingWorkout ? () => setIsDeletePending(true) : undefined}
-                  onSave={() =>
-                    editingWorkout ? handleSaveWorkout(editingWorkout) : handleCreateWorkout()
-                  }
-                  onUpdateDraftWorkout={(updater) =>
-                    setDraftWorkout((currentDraft) =>
-                      currentDraft ? updater(currentDraft) : currentDraft,
-                    )
-                  }
-                  saveLabel={editingWorkout ? "Save Changes" : "Create Workout"}
-                />
-
-                {editingWorkout && isDeletePending ? (
-                  <View style={styles.confirmationBox}>
-                    <Text style={styles.confirmationTitle}>Delete this workout?</Text>
-                    <Text style={styles.mutedText}>
-                      This removes the workout locally and syncs the delete when the backend is configured.
-                    </Text>
-                    <View style={styles.actionRow}>
-                      <Button
-                        icon="trash"
-                        onPress={() => handleConfirmDelete(editingWorkout)}
-                        variant="danger"
-                      >
-                        Confirm Delete
-                      </Button>
-                      <Button
-                        icon="arrow-left"
-                        onPress={() => setIsDeletePending(false)}
-                        variant="secondary"
-                      >
-                        Keep Workout
-                      </Button>
-                    </View>
-                  </View>
-                ) : null}
-              </>
+              <WorkoutEditor
+                onCancel={handleCancelEdit}
+                onSave={handleCreateWorkout}
+                onUpdateWorkout={handleUpdateDraftWorkout}
+                saveLabel="Create Workout"
+                workout={draftWorkout}
+              />
             ) : null}
           </ScrollView>
-        </View>
+        </SafeAreaView>
       </Modal>
     </View>
   );
 }
 
 type WorkoutCalendarItemProps = {
+  draftWorkout: Workout | null;
+  isCompact?: boolean;
+  isDeletePending: boolean;
+  isExpanded: boolean;
+  onCancelDelete: () => void;
+  onCancelEdit: () => void;
+  onConfirmDelete: () => void;
+  onRequestDelete: () => void;
+  onSave: () => void;
   onStartEdit: () => void;
+  onUpdateDraftWorkout: (updater: (workout: Workout) => Workout) => void;
   workout: Workout;
 };
 
 function WorkoutCalendarItem({
+  draftWorkout,
+  isCompact = false,
+  isDeletePending,
+  isExpanded,
+  onCancelDelete,
+  onCancelEdit,
+  onConfirmDelete,
+  onRequestDelete,
+  onSave,
   onStartEdit,
+  onUpdateDraftWorkout,
   workout,
 }: WorkoutCalendarItemProps) {
   const colors = useThemeColors();
@@ -575,22 +597,43 @@ function WorkoutCalendarItem({
   );
 
   return (
-    <View style={styles.sessionItem}>
-      <Text style={styles.sessionTitle}>{workout.title}</Text>
-      <Text style={styles.mutedText}>{formatWorkoutTime(workout.date)}</Text>
-      <Text style={styles.metaText}>
-        {workout.exercises.length} exercises · {setCount} sets
-      </Text>
+    <View style={[styles.sessionItem, isCompact && styles.compactSessionItem]}>
+      <Pressable
+        accessibilityLabel={`${workout.title}, ${isExpanded ? "collapse" : "expand"}`}
+        accessibilityRole="button"
+        onPress={onStartEdit}
+        style={styles.expandableSummary}
+      >
+        <View style={styles.expandableSummaryCopy}>
+          <Text style={styles.sessionTitle}>{workout.title}</Text>
+          <Text style={styles.mutedText}>{formatWorkoutTime(workout.date)}</Text>
+          <Text style={styles.metaText}>
+            {workout.exercises.length} exercises · {setCount} sets
+          </Text>
+        </View>
 
-      <View style={styles.actionRow}>
-        <Button icon="pencil-square" onPress={onStartEdit} variant="secondary">
-          Modify
-        </Button>
-      </View>
+        <Icon
+          color={colors.textMuted}
+          name={isExpanded ? "chevron-up" : "chevron-down"}
+          size={18}
+        />
+      </Pressable>
+
+      {isExpanded && draftWorkout ? (
+        <WorkoutEditor
+          isDeletePending={isDeletePending}
+          onCancel={onCancelEdit}
+          onCancelDelete={onCancelDelete}
+          onConfirmDelete={onConfirmDelete}
+          onRequestDelete={onRequestDelete}
+          onSave={onSave}
+          onUpdateWorkout={onUpdateDraftWorkout}
+          workout={draftWorkout}
+        />
+      ) : null}
     </View>
   );
 }
-
 type CalendarDay = {
   date: Date;
   dateKey: string;
@@ -807,10 +850,18 @@ function createStyles(colors: AppColors) {
   content: {
     gap: spacing.lg,
   },
+  compactDetailsContent: {
+    gap: spacing.md,
+  },
+  compactDetailsCard: {
+    borderRadius: 24,
+    gap: spacing.md,
+    padding: spacing.lg,
+  },
   syncText: {
     color: colors.textMuted,
-    fontSize: typography.sizes.body,
-    lineHeight: typography.lineHeights.body,
+    fontSize: typography.sizes.small,
+    lineHeight: typography.lineHeights.small,
   },
   errorText: {
     color: colors.danger,
@@ -1071,36 +1122,25 @@ function createStyles(colors: AppColors) {
     minHeight: 18,
     paddingHorizontal: 3,
   },
-  workoutDot: {
-    backgroundColor: colors.workout,
-    borderRadius: 4,
-    height: 8,
-    width: 8,
-  },
-  nutritionDot: {
-    backgroundColor: colors.nutrition,
-    borderRadius: 4,
-    height: 8,
-    width: 8,
-  },
   modalScreen: {
     backgroundColor: colors.background,
     flex: 1,
   },
   modalHeader: {
-    alignItems: "flex-start",
+    alignItems: "center",
     borderBottomColor: colors.border,
     borderBottomWidth: 1,
     flexDirection: "row",
-    gap: spacing.lg,
+    gap: spacing.md,
     justifyContent: "space-between",
-    paddingBottom: spacing.lg,
+    paddingBottom: spacing.md,
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xxl,
+    paddingTop: spacing.md,
   },
   modalTitleGroup: {
     flex: 1,
-    gap: spacing.xs,
+    gap: 2,
+    minWidth: 0,
   },
   modalEyebrow: {
     color: colors.textMuted,
@@ -1112,28 +1152,25 @@ function createStyles(colors: AppColors) {
   },
   modalTitle: {
     color: colors.text,
-    fontSize: typography.sizes.title,
+    fontSize: 22,
     fontWeight: typography.weights.bold,
-    lineHeight: typography.lineHeights.title,
+    lineHeight: 28,
   },
   modalContent: {
-    gap: spacing.xl,
-    padding: spacing.xl,
-    paddingBottom: spacing.xxl,
+    gap: spacing.lg,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.xxxl,
+    paddingTop: spacing.lg,
   },
   closeButton: {
+    alignItems: "center",
     backgroundColor: colors.surfaceElevated,
     borderColor: colors.border,
     borderRadius: 999,
     borderWidth: 1,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  closeButtonText: {
-    color: colors.text,
-    fontSize: typography.sizes.body,
-    fontWeight: typography.weights.semibold,
-    lineHeight: typography.lineHeights.body,
+    height: 44,
+    justifyContent: "center",
+    width: 44,
   },
   sessionList: {
     gap: spacing.md,
@@ -1143,8 +1180,24 @@ function createStyles(colors: AppColors) {
     borderColor: colors.border,
     borderRadius: 22,
     borderWidth: 1,
-    gap: spacing.sm,
+    gap: spacing.md,
     padding: spacing.lg,
+  },
+  compactSessionItem: {
+    borderRadius: 18,
+    gap: spacing.sm,
+    padding: spacing.md,
+  },
+  expandableSummary: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.md,
+    justifyContent: "space-between",
+  },
+  expandableSummaryCopy: {
+    flex: 1,
+    gap: spacing.xs,
+    minWidth: 0,
   },
   actionRow: {
     flexDirection: "row",
@@ -1152,20 +1205,14 @@ function createStyles(colors: AppColors) {
     gap: spacing.md,
     marginTop: spacing.sm,
   },
-  confirmationBox: {
-    backgroundColor: colors.dangerMuted,
-    borderColor: colors.danger,
-    borderRadius: 22,
-    borderWidth: 1,
+  compactActionRow: {
     gap: spacing.sm,
-    marginTop: spacing.md,
-    padding: spacing.md,
+    marginTop: 0,
   },
-  confirmationTitle: {
-    color: colors.text,
-    fontSize: typography.sizes.body,
-    fontWeight: typography.weights.semibold,
-    lineHeight: typography.lineHeights.body,
+  compactActionButton: {
+    minHeight: 44,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
   },
   emptyInline: {
     backgroundColor: colors.surfaceMuted,

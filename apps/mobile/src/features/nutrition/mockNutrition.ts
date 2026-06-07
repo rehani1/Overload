@@ -3,7 +3,7 @@ import type { NutritionEntry, NutritionTarget } from "@/types/nutrition";
 const now = new Date().toISOString();
 const today = now.slice(0, 10);
 
-export const mockNutritionTarget: NutritionTarget = {
+export const defaultNutritionTarget: NutritionTarget = {
   id: "00000000-0000-4000-8000-000000000001",
   dailyCalories: 2400,
   proteinGrams: 180,
@@ -11,6 +11,8 @@ export const mockNutritionTarget: NutritionTarget = {
   fatGrams: 75,
   updatedAt: now,
 };
+
+export const mockNutritionTarget: NutritionTarget = defaultNutritionTarget;
 
 export const mockNutritionEntries: NutritionEntry[] = [
   {

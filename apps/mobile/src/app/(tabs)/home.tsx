@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { router } from "expo-router";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Circle } from "react-native-svg";
 
 import { Button } from "@/components/Button";
@@ -12,7 +13,9 @@ import { typography } from "@/constants/typography";
 import { NutritionSection } from "@/features/nutrition/NutritionSection";
 import { WorkoutCalendar, WorkoutDateDetails } from "@/features/workouts/WorkoutCalendar";
 import { useNutritionStore } from "@/store/useNutritionStore";
+import { useWorkoutHistoryStore } from "@/store/useWorkoutHistoryStore";
 import { useThemeColors } from "@/theme/ThemeProvider";
+import type { Workout } from "@/types/workout";
 
 export default function HomeScreen() {
   const colors = useThemeColors();
@@ -23,6 +26,8 @@ export default function HomeScreen() {
     <Screen>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <TodayNutritionDashboard />
+
+        <LatestSessionCard />
 
         <WorkoutCalendar onDatePress={setSelectedDateKey} />
       </ScrollView>
@@ -38,6 +43,42 @@ export default function HomeScreen() {
         selectedDateKey={selectedDateKey}
       />
     </Screen>
+  );
+}
+
+function LatestSessionCard() {
+  const { workouts } = useWorkoutHistoryStore();
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
+  const latestWorkout = getLatestWorkout(workouts.filter((workout) => workout.status === "completed"));
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      disabled={!latestWorkout}
+      onPress={() => {
+        if (latestWorkout) {
+          router.push(`/workout/${latestWorkout.id}`);
+        }
+      }}
+      style={styles.latestSessionCard}
+    >
+      <View style={styles.latestSessionCopy}>
+        <Text style={styles.latestSessionEyebrow}>Latest session</Text>
+        <Text style={styles.latestSessionTitle}>{latestWorkout?.title ?? "No workout yet"}</Text>
+        <Text style={styles.latestSessionMeta}>
+          {latestWorkout
+            ? `${formatShortDate(latestWorkout.date)} · ${latestWorkout.exercises.length} exercises · ${countWorkoutSets(
+                latestWorkout,
+              )} sets`
+            : "Start a workout to build your training history."}
+        </Text>
+      </View>
+
+      <View style={styles.latestSessionIcon}>
+        <Icon color={colors.primary} name="fire" size={22} />
+      </View>
+    </Pressable>
   );
 }
 
@@ -174,22 +215,23 @@ function DateDetailsModal({ onClose, selectedDateKey }: DateDetailsModalProps) {
       presentationStyle="fullScreen"
       visible={selectedDateKey !== null}
     >
-      <View style={styles.modalScreen}>
+      <SafeAreaView edges={["top"]} style={styles.modalScreen}>
         <View style={styles.modalHeader}>
           <View style={styles.modalTitleGroup}>
             <Text style={styles.modalEyebrow}>Selected date</Text>
-            <Text style={styles.modalTitle}>
+            <Text numberOfLines={2} style={styles.modalTitle}>
               {selectedDateKey ? formatDateTitle(selectedDateKey) : ""}
             </Text>
           </View>
 
           <Pressable
+            accessibilityLabel="Close selected date"
             accessibilityRole="button"
+            hitSlop={8}
             onPress={onClose}
             style={styles.closeButton}
           >
-            <Icon color={colors.text} name="x-mark" size={18} />
-            <Text style={styles.closeButtonText}>Close</Text>
+            <Icon color={colors.text} name="x-mark" size={20} />
           </Pressable>
         </View>
 
@@ -197,18 +239,21 @@ function DateDetailsModal({ onClose, selectedDateKey }: DateDetailsModalProps) {
           {selectedDateKey ? (
             <>
               <WorkoutDateDetails
+                isCompact
                 key={`workouts-${selectedDateKey}`}
                 selectedDateKey={selectedDateKey}
               />
               <NutritionSection
+                isCompact
                 key={`nutrition-${selectedDateKey}`}
                 selectedDate={selectedDateKey}
                 showDateControls={false}
+                showIntroCard={false}
               />
             </>
           ) : null}
         </ScrollView>
-      </View>
+      </SafeAreaView>
     </Modal>
   );
 }
@@ -240,6 +285,24 @@ function getProgressRatio(current: number, target: number) {
   return Math.min(Math.max(current / target, 0), 1);
 }
 
+function countWorkoutSets(workout: Workout) {
+  return workout.exercises.reduce((total, workoutExercise) => total + workoutExercise.sets.length, 0);
+}
+
+function getLatestWorkout(workouts: Workout[]) {
+  return [...workouts].sort(
+    (firstWorkout, secondWorkout) =>
+      new Date(secondWorkout.date).getTime() - new Date(firstWorkout.date).getTime(),
+  )[0];
+}
+
+function formatShortDate(date: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+  }).format(new Date(date));
+}
+
 function formatNumber(value: number) {
   return Math.round(value).toLocaleString("en-US");
 }
@@ -262,6 +325,49 @@ function createStyles(colors: AppColors) {
   },
   todaySection: {
     gap: spacing.md,
+  },
+  latestSessionCard: {
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: 26,
+    borderWidth: 1,
+    boxShadow: `0px 10px 24px ${colors.shadow}`,
+    flexDirection: "row",
+    gap: spacing.md,
+    justifyContent: "space-between",
+    padding: spacing.lg,
+  },
+  latestSessionCopy: {
+    flex: 1,
+    gap: spacing.xs,
+    minWidth: 0,
+  },
+  latestSessionEyebrow: {
+    color: colors.textMuted,
+    fontSize: typography.sizes.caption,
+    fontWeight: typography.weights.semibold,
+    lineHeight: typography.lineHeights.caption,
+    textTransform: "uppercase",
+  },
+  latestSessionTitle: {
+    color: colors.text,
+    fontSize: typography.sizes.subtitle,
+    fontWeight: typography.weights.bold,
+    lineHeight: typography.lineHeights.subtitle,
+  },
+  latestSessionMeta: {
+    color: colors.textMuted,
+    fontSize: typography.sizes.small,
+    lineHeight: typography.lineHeights.small,
+  },
+  latestSessionIcon: {
+    alignItems: "center",
+    backgroundColor: colors.primaryMuted,
+    borderRadius: 18,
+    height: 44,
+    justifyContent: "center",
+    width: 44,
   },
   sectionTitle: {
     color: colors.text,
@@ -362,19 +468,20 @@ function createStyles(colors: AppColors) {
     flex: 1,
   },
   modalHeader: {
-    alignItems: "flex-start",
+    alignItems: "center",
     borderBottomColor: colors.border,
     borderBottomWidth: 1,
     flexDirection: "row",
-    gap: spacing.lg,
+    gap: spacing.md,
     justifyContent: "space-between",
     paddingHorizontal: spacing.xl,
-    paddingBottom: spacing.xl,
-    paddingTop: spacing.xxl,
+    paddingBottom: spacing.md,
+    paddingTop: spacing.md,
   },
   modalTitleGroup: {
     flex: 1,
-    gap: spacing.xs,
+    gap: 2,
+    minWidth: 0,
   },
   modalEyebrow: {
     color: colors.textMuted,
@@ -386,28 +493,25 @@ function createStyles(colors: AppColors) {
   },
   modalTitle: {
     color: colors.text,
-    fontSize: typography.sizes.title,
+    fontSize: 22,
     fontWeight: typography.weights.bold,
-    lineHeight: typography.lineHeights.title,
+    lineHeight: 28,
   },
   closeButton: {
+    alignItems: "center",
     backgroundColor: colors.surfaceElevated,
     borderColor: colors.border,
     borderRadius: 999,
     borderWidth: 1,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  closeButtonText: {
-    color: colors.text,
-    fontSize: typography.sizes.body,
-    fontWeight: typography.weights.semibold,
-    lineHeight: typography.lineHeights.body,
+    height: 44,
+    justifyContent: "center",
+    width: 44,
   },
   modalContent: {
-    gap: spacing.xl,
-    padding: spacing.xl,
-    paddingBottom: spacing.xxl,
+    gap: spacing.md,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.xxxl,
+    paddingTop: spacing.lg,
   },
   pressed: {
     opacity: 0.84,

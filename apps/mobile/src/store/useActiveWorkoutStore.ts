@@ -29,6 +29,7 @@ type ActiveWorkoutStore = ActiveWorkoutState & {
     setId: string,
     updates: Partial<Omit<WorkoutSet, "id">>,
   ) => void;
+  updateWorkout: (updater: (workout: Workout) => Workout) => void;
   removeSet: (workoutExerciseId: string, setId: string) => void;
   finishWorkout: () => Workout | null;
   resetWorkout: () => void;
@@ -226,7 +227,7 @@ function finishWorkout() {
 
   const completedWorkout: Workout = {
     ...state.activeWorkout,
-    date: new Date().toISOString(),
+    title: state.activeWorkout.title.trim() || "Workout",
     status: "completed",
   };
 
@@ -260,6 +261,7 @@ function buildStore(snapshot: ActiveWorkoutState): ActiveWorkoutStore {
     removeExercise,
     addSet,
     updateSet,
+    updateWorkout: updateActiveWorkout,
     removeSet,
     finishWorkout,
     resetWorkout,

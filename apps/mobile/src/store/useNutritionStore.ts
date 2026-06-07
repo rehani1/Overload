@@ -1,8 +1,8 @@
 import { useSyncExternalStore } from "react";
 
 import {
+  defaultNutritionTarget,
   mockNutritionEntries,
-  mockNutritionTarget,
 } from "@/features/nutrition/mockNutrition";
 import { loadStoredJson, saveStoredJson } from "@/lib/storage";
 import type {
@@ -32,7 +32,7 @@ type NutritionStore = NutritionState & {
 let state: NutritionState = {
   entries: mockNutritionEntries,
   isHydrated: false,
-  target: mockNutritionTarget,
+  target: defaultNutritionTarget,
 };
 
 const listeners = new Set<() => void>();
@@ -157,7 +157,7 @@ async function hydrateNutritionState() {
       ? mergeSeedEntries(storedState.entries)
       : mockNutritionEntries,
     isHydrated: true,
-    target: storedState?.target ?? mockNutritionTarget,
+    target: mergeStoredTarget(storedState?.target),
   });
 }
 
@@ -186,6 +186,13 @@ function mergeSeedEntries(entries: NutritionEntry[]) {
   );
 
   return sortEntries([...entries, ...missingSeedEntries]);
+}
+
+function mergeStoredTarget(target?: NutritionTarget) {
+  return {
+    ...defaultNutritionTarget,
+    ...target,
+  };
 }
 
 void hydrateNutritionState();
