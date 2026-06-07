@@ -63,7 +63,7 @@ The mobile app remains local-first unless `EXPO_PUBLIC_API_URL` is set. Leave th
 
 ## Backend Commands
 
-Backend scaffolding is the next implementation slice. Once `services/api` contains the Spring Boot app, the intended local commands are:
+The backend is a Spring Boot 3.x API with a Maven wrapper, PostgreSQL, Flyway, Spring Security, Validation, JPA, and Actuator.
 
 ```bash
 cd services/api
@@ -79,6 +79,13 @@ SPRING_DATASOURCE_USERNAME=overload
 SPRING_DATASOURCE_PASSWORD=overload
 JWT_SECRET=replace-with-a-long-random-secret
 CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:8081
+```
+
+Health checks:
+
+```bash
+curl http://localhost:8080/api/health
+curl http://localhost:8080/actuator/health
 ```
 
 ## Web Commands
