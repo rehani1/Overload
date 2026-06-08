@@ -54,14 +54,14 @@ export default function PairMobileScreen() {
 
   async function handleClaimCode() {
     if (!isApiConfigured) {
-      setError("Set EXPO_PUBLIC_API_URL before pairing mobile.");
+      setError("Set EXPO_PUBLIC_API_URL before syncing with web.");
       return;
     }
 
     const normalizedCode = code.trim().replace(/[^A-Za-z0-9]/g, "").toUpperCase();
 
     if (!normalizedCode) {
-      setError("Enter the pairing code from web.");
+      setError("Enter the code from the web app.");
       return;
     }
 
@@ -79,7 +79,7 @@ export default function PairMobileScreen() {
 
       await connectOnly(session);
     } catch {
-      setError("Pairing failed. Generate a new code on web and try again.");
+      setError("Sync failed. Generate a new code on web and try again.");
     } finally {
       setIsPending(false);
     }
@@ -156,21 +156,21 @@ export default function PairMobileScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.brandLockup}>
           <Text style={styles.brandMark}>Overload</Text>
-          <Text style={styles.brandMeta}>Pair mobile</Text>
+          <Text style={styles.brandMeta}>Sync with web</Text>
         </View>
 
-        <Card title={stage === "confirm" ? "Import local data" : "Enter pairing code"}>
+        <Card title={stage === "confirm" ? "Import local data" : "Enter web code"}>
           {stage === "entry" ? (
             <>
               <Input
-                label="Pairing code"
+                label="Web code"
                 onChangeText={(value) => setCode(value.toUpperCase())}
                 placeholder="ABCDEFGH"
                 value={code}
               />
               {error ? <Text style={styles.errorText}>{error}</Text> : null}
               <Button disabled={isPending} icon="check" onPress={() => void handleClaimCode()}>
-                {isPending ? "Pairing" : "Pair mobile"}
+                {isPending ? "Syncing" : "Sync mobile"}
               </Button>
             </>
           ) : null}
@@ -203,7 +203,7 @@ export default function PairMobileScreen() {
           ) : null}
 
           {stage === "complete" ? (
-            <Text style={styles.bodyText}>Mobile is connected to the web account.</Text>
+            <Text style={styles.bodyText}>Mobile is synced with the web account.</Text>
           ) : null}
 
           <Button disabled={isPending} icon="arrow-left" onPress={handleBack} variant="secondary">

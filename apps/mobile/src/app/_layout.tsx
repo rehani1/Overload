@@ -1,8 +1,6 @@
-import { useEffect } from "react";
-import { router, Stack, useRootNavigationState, useSegments } from "expo-router";
+import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 
-import { useAuthStore } from "@/store/useAuthStore";
 import { AppThemeProvider, useAppTheme } from "@/theme/ThemeProvider";
 
 import "../global.css";
@@ -18,8 +16,6 @@ export default function RootLayout() {
 function RootNavigator() {
   const { isDark } = useAppTheme();
 
-  useRouteProtection();
-
   return (
     <>
       <StatusBar style={isDark ? "light" : "dark"} />
@@ -33,32 +29,4 @@ function RootNavigator() {
       </Stack>
     </>
   );
-}
-
-function useRouteProtection() {
-  const { isAuthenticated, isHydrated } = useAuthStore();
-  const navigationState = useRootNavigationState();
-  const segments = useSegments();
-  const firstSegment = segments[0];
-
-  useEffect(() => {
-    if (!isHydrated || !navigationState?.key) {
-      return;
-    }
-
-    const isAuthRoute =
-      firstSegment === "(auth)" || firstSegment === "login" || firstSegment === "register";
-    const isPairRoute = firstSegment === "pair-mobile";
-    const isIndexRoute = !firstSegment;
-    const isPublicRoute = isAuthRoute || isIndexRoute || isPairRoute;
-
-    if (!isAuthenticated && !isPublicRoute) {
-      router.replace("/login");
-      return;
-    }
-
-    if (isAuthenticated && (isAuthRoute || isIndexRoute)) {
-      router.replace("/home");
-    }
-  }, [firstSegment, isAuthenticated, isHydrated, navigationState?.key]);
 }
