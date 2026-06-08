@@ -78,7 +78,7 @@ SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/overload
 SPRING_DATASOURCE_USERNAME=overload
 SPRING_DATASOURCE_PASSWORD=overload
 JWT_SECRET=replace-with-a-long-random-secret
-CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:8081
+CORS_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,http://localhost:8081,http://127.0.0.1:8081
 ```
 
 Health checks:
@@ -91,6 +91,7 @@ curl http://localhost:8080/actuator/health
 Current API surface:
 
 - `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/refresh`, `POST /api/auth/logout`
+- `POST /api/pairing-codes`, `POST /api/auth/pairing-codes/claim`
 - `GET /api/users/me`, `PATCH /api/users/me`
 - `GET/POST /api/exercises`, `GET/PUT/DELETE /api/exercises/{id}`
 - `GET/POST /api/workouts`, `GET/PATCH/DELETE /api/workouts/{id}`
@@ -117,6 +118,8 @@ Expected web environment variable:
 ```text
 VITE_API_URL=http://localhost:8080/api
 ```
+
+Open the web app with either `http://localhost:5173` or `http://127.0.0.1:5173`; both loopback origins are included in the backend's default CORS allowlist.
 
 ## Full-Stack Compose
 

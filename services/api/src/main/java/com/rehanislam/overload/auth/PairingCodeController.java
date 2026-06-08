@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/auth/pairing-codes")
+@RequestMapping("/api")
 public class PairingCodeController {
 
 	private final PairingCodeService pairingCodeService;
@@ -23,12 +23,12 @@ public class PairingCodeController {
 		this.pairingCodeService = pairingCodeService;
 	}
 
-	@PostMapping
+	@PostMapping({ "/pairing-codes", "/auth/pairing-codes" })
 	public PairingCodeResponse create(@AuthenticationPrincipal UserPrincipal principal) {
 		return pairingCodeService.create(principal.id());
 	}
 
-	@PostMapping("/claim")
+	@PostMapping("/auth/pairing-codes/claim")
 	public AuthResponse claim(@Valid @RequestBody ClaimPairingCodeRequest request) {
 		return pairingCodeService.claim(request.code());
 	}

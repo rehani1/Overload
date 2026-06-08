@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -60,7 +61,7 @@ class PairingCodeServiceTest {
 			anyString(),
 			eq(userId),
 			eq(TokenHash.sha256Hex(response.code())),
-			eq(response.expiresAt())
+			eq(Timestamp.from(response.expiresAt()))
 		);
 	}
 

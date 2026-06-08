@@ -3,6 +3,7 @@ package com.rehanislam.overload.auth;
 import java.security.SecureRandom;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
@@ -60,7 +61,7 @@ public class PairingCodeService {
 			""",
 			userId,
 			hash(code),
-			expiresAt
+			Timestamp.from(expiresAt)
 		);
 		return new PairingCodeResponse(code, expiresAt);
 	}

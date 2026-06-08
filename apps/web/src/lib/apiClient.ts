@@ -88,7 +88,16 @@ export function getApiStatus(error: unknown): number | undefined {
   return undefined;
 }
 
-export function getApiErrorMessage(error: unknown, fallback = "Request failed."): string {
+type ApiErrorMessageOptions = {
+  conflictMessage?: string;
+  unauthorizedMessage?: string;
+};
+
+export function getApiErrorMessage(
+  error: unknown,
+  fallback = "Request failed.",
+  options: ApiErrorMessageOptions = {},
+): string {
   if (!axios.isAxiosError(error)) {
     return fallback;
   }
@@ -112,11 +121,11 @@ export function getApiErrorMessage(error: unknown, fallback = "Request failed.")
   }
 
   if (error.response.status === 401) {
-    return "Email or password is incorrect.";
+    return options.unauthorizedMessage ?? "Your session expired. Sign in again.";
   }
 
   if (error.response.status === 409) {
-    return "An account already exists for that email.";
+    return options.conflictMessage ?? "An account already exists for that email.";
   }
 
   return fallback;

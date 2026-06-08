@@ -23,7 +23,7 @@ export async function logout(refreshToken: string): Promise<void> {
 }
 
 export async function createPairingCode(): Promise<PairingCodeResponse> {
-  const response = await apiClient.post<PairingCodeResponse>("/auth/pairing-codes");
+  const response = await apiClient.post<PairingCodeResponse>("/pairing-codes");
 
   return response.data;
 }

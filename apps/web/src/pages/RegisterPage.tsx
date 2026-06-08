@@ -103,7 +103,9 @@ export function RegisterPage() {
 
         {registerMutation.isError ? (
           <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
-            {getApiErrorMessage(registerMutation.error, "Unable to create account.")}
+            {getApiErrorMessage(registerMutation.error, "Unable to create account.", {
+              conflictMessage: "An account already exists for that email.",
+            })}
           </div>
         ) : null}
 

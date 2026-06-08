@@ -1,9 +1,12 @@
 import { useEffect, useRef } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { RefreshCcw, Smartphone, X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 import { createPairingCode } from "../api/auth";
-import { getApiErrorMessage } from "../lib/apiClient";
+import { getApiErrorMessage, getApiStatus } from "../lib/apiClient";
+import { clearStoredAuth } from "../lib/authStorage";
+import { queryClient } from "../lib/queryClient";
 
 type PairMobileDialogProps = {
   isOpen: boolean;
@@ -12,10 +15,19 @@ type PairMobileDialogProps = {
 
 export function PairMobileDialog({ isOpen, onClose }: PairMobileDialogProps) {
   const hasRequestedCode = useRef(false);
+  const navigate = useNavigate();
   const pairingMutation = useMutation({
     mutationFn: createPairingCode,
   });
   const { data, isPending, mutate, reset } = pairingMutation;
+  const isUnauthorized = getApiStatus(pairingMutation.error) === 401;
+
+  function handleSignInAgain() {
+    clearStoredAuth();
+    queryClient.clear();
+    onClose();
+    navigate("/login", { replace: true });
+  }
 
   useEffect(() => {
     if (!isOpen) {
@@ -86,9 +98,27 @@ export function PairMobileDialog({ isOpen, onClose }: PairMobileDialogProps) {
               </p>
             </>
           ) : (
-            <p className="text-sm font-semibold text-red-700">
-              {getApiErrorMessage(pairingMutation.error, "Could not create a pairing code.")}
-            </p>
+            <div className="space-y-4">
+              <p className="text-sm font-semibold text-red-700">
+                {getApiErrorMessage(
+                  pairingMutation.error,
+                  "Could not create a pairing code.",
+                  {
+                    unauthorizedMessage:
+                      "Your web session expired. Sign in again, then generate a new pairing code.",
+                  },
+                )}
+              </p>
+              {isUnauthorized ? (
+                <button
+                  className="inline-flex h-10 items-center justify-center rounded-lg bg-overload-ink px-4 text-sm font-semibold text-white transition hover:bg-[#1b312b]"
+                  type="button"
+                  onClick={handleSignInAgain}
+                >
+                  Sign in again
+                </button>
+              ) : null}
+            </div>
           )}
         </div>
 
