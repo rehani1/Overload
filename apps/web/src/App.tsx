@@ -3,12 +3,13 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { AppLayout } from "./components/AppLayout";
 import { RedirectIfAuthenticated } from "./auth/RedirectIfAuthenticated";
 import { RequireAuth } from "./auth/RequireAuth";
+import { AiChatPage } from "./pages/AiChatPage";
 import { DashboardPage } from "./pages/DashboardPage";
-import { ExercisesPage } from "./pages/ExercisesPage";
 import { LoginPage } from "./pages/LoginPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { NutritionPage } from "./pages/NutritionPage";
-import { ProgramsPage } from "./pages/ProgramsPage";
+import { PresetsPage } from "./pages/PresetsPage";
+import { ProfilePage } from "./pages/ProfilePage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { WorkoutsPage } from "./pages/WorkoutsPage";
 
@@ -25,8 +26,10 @@ export default function App() {
           <Route index element={<DashboardPage />} />
           <Route path="workouts" element={<WorkoutsPage />} />
           <Route path="nutrition" element={<NutritionPage />} />
-          <Route path="exercises" element={<ExercisesPage />} />
-          <Route path="programs" element={<ProgramsPage />} />
+          <Route path="presets" element={<PresetsPage />} />
+          <Route path="profile" element={<ProfilePage />} />
+          <Route path="ai" element={<AiChatPage />} />
+          <Route path="programs" element={<Navigate to="/presets" replace />} />
         </Route>
       </Route>
 

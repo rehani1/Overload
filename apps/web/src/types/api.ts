@@ -108,14 +108,18 @@ export type NutritionTarget = {
   updatedAt: string;
 };
 
-export type Program = {
+export type WorkoutPreset = {
   id: string;
-  name: string;
-  goal: string;
-  notes?: string;
-  days: unknown;
   createdAt: string;
-  updatedAt: string;
+  title: string;
+  workout: Workout;
+};
+
+export type MealPreset = {
+  id: string;
+  createdAt: string;
+  foodName: string;
+  entry: NutritionEntry;
 };
 
 export type AnalyticsSummary = {
@@ -158,4 +162,20 @@ export type AnalyticsSummary = {
     title: string;
     subtitle: string;
   }>;
+};
+
+export type AiChatRole = "assistant" | "user";
+
+export type AiChatMessage = {
+  role: AiChatRole;
+  content: string;
+};
+
+export type AiChatRequest = {
+  messages: AiChatMessage[];
+};
+
+export type AiChatResponse = {
+  message: string;
+  model: string;
 };

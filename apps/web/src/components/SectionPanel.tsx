@@ -7,9 +7,12 @@ type SectionPanelProps = {
 
 export function SectionPanel({ children, title }: SectionPanelProps) {
   return (
-    <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
-      <h3 className="text-base font-semibold text-overload-ink">{title}</h3>
-      <div className="mt-4">{children}</div>
+    <section className="overflow-hidden rounded-lg border border-overload-border bg-overload-surface shadow-sm">
+      <div className="h-1 bg-overload-primary" />
+      <div className="p-5">
+        <h3 className="text-base font-semibold text-overload-primary">{title}</h3>
+        <div className="mt-4">{children}</div>
+      </div>
     </section>
   );
 }

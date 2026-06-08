@@ -4,7 +4,7 @@ import { getNutritionEntries, getNutritionTarget } from "../api/resources";
 import { PageHeader } from "../components/PageHeader";
 import { SectionPanel } from "../components/SectionPanel";
 import { StatusMessage } from "../components/StatusMessage";
-import { formatDate, formatDecimal } from "../lib/format";
+import { formatDate, formatDateTime, formatDecimal } from "../lib/format";
 
 export function NutritionPage() {
   const targetQuery = useQuery({
@@ -35,6 +35,7 @@ export function NutritionPage() {
               />
               <TargetRow label="Carbs" value={`${formatDecimal(targetQuery.data.carbsGrams)} g`} />
               <TargetRow label="Fat" value={`${formatDecimal(targetQuery.data.fatGrams)} g`} />
+              <TargetRow label="Updated" value={formatDateTime(targetQuery.data.updatedAt)} />
             </div>
           ) : (
             <StatusMessage>No target found.</StatusMessage>
@@ -48,36 +49,54 @@ export function NutritionPage() {
             <StatusMessage>Unable to load nutrition entries.</StatusMessage>
           ) : entriesQuery.data?.length ? (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[720px] border-separate border-spacing-0 text-left text-sm">
+              <table className="w-full min-w-[1120px] border-separate border-spacing-0 text-left text-sm">
                 <thead>
-                  <tr className="text-xs uppercase tracking-[0.14em] text-zinc-500">
-                    <th className="border-b border-zinc-200 py-3 pr-4 font-semibold">Date</th>
-                    <th className="border-b border-zinc-200 py-3 pr-4 font-semibold">Meal</th>
-                    <th className="border-b border-zinc-200 py-3 pr-4 font-semibold">Food</th>
-                    <th className="border-b border-zinc-200 py-3 pr-4 font-semibold">
+                  <tr className="text-xs uppercase tracking-[0.14em] text-overload-muted">
+                    <th className="border-b border-overload-border py-3 pr-4 font-semibold">Date</th>
+                    <th className="border-b border-overload-border py-3 pr-4 font-semibold">Meal</th>
+                    <th className="border-b border-overload-border py-3 pr-4 font-semibold">Food</th>
+                    <th className="border-b border-overload-border py-3 pr-4 font-semibold">
+                      Serving
+                    </th>
+                    <th className="border-b border-overload-border py-3 pr-4 font-semibold">
                       Calories
                     </th>
-                    <th className="border-b border-zinc-200 py-3 font-semibold">Macros</th>
+                    <th className="border-b border-overload-border py-3 pr-4 font-semibold">Macros</th>
+                    <th className="border-b border-overload-border py-3 pr-4 font-semibold">Notes</th>
+                    <th className="border-b border-overload-border py-3 pr-4 font-semibold">Created</th>
+                    <th className="border-b border-overload-border py-3 font-semibold">Updated</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {entriesQuery.data.slice(0, 25).map((entry) => (
+                  {entriesQuery.data.map((entry) => (
                     <tr key={entry.id}>
-                      <td className="border-b border-zinc-100 py-3 pr-4 text-zinc-600">
+                      <td className="border-b border-overload-border py-3 pr-4 text-overload-muted">
                         {formatDate(entry.date)}
                       </td>
-                      <td className="border-b border-zinc-100 py-3 pr-4 capitalize text-zinc-600">
+                      <td className="border-b border-overload-border py-3 pr-4 capitalize text-overload-muted">
                         {entry.mealType}
                       </td>
-                      <td className="border-b border-zinc-100 py-3 pr-4 font-medium text-overload-ink">
+                      <td className="border-b border-overload-border py-3 pr-4 font-medium text-overload-ink">
                         {entry.foodName}
                       </td>
-                      <td className="border-b border-zinc-100 py-3 pr-4 text-zinc-600">
+                      <td className="border-b border-overload-border py-3 pr-4 text-overload-muted">
+                        {formatDecimal(entry.servingQuantity)}
+                      </td>
+                      <td className="border-b border-overload-border py-3 pr-4 text-overload-muted">
                         {entry.calories.toLocaleString()}
                       </td>
-                      <td className="border-b border-zinc-100 py-3 text-zinc-600">
+                      <td className="border-b border-overload-border py-3 pr-4 text-overload-muted">
                         {formatDecimal(entry.proteinGrams)}p / {formatDecimal(entry.carbsGrams)}c /{" "}
                         {formatDecimal(entry.fatGrams)}f
+                      </td>
+                      <td className="border-b border-overload-border py-3 pr-4 text-overload-muted">
+                        {entry.notes || "None"}
+                      </td>
+                      <td className="border-b border-overload-border py-3 pr-4 text-overload-muted">
+                        {formatDateTime(entry.createdAt)}
+                      </td>
+                      <td className="border-b border-overload-border py-3 text-overload-muted">
+                        {formatDateTime(entry.updatedAt)}
                       </td>
                     </tr>
                   ))}
@@ -100,8 +119,8 @@ type TargetRowProps = {
 
 function TargetRow({ label, value }: TargetRowProps) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-lg bg-zinc-50 px-4 py-3">
-      <span className="font-medium text-zinc-600">{label}</span>
+    <div className="flex items-center justify-between gap-4 rounded-lg bg-overload-surface-muted px-4 py-3">
+      <span className="font-medium text-overload-muted">{label}</span>
       <span className="font-semibold text-overload-ink">{value}</span>
     </div>
   );

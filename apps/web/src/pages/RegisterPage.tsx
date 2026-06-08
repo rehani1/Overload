@@ -102,7 +102,7 @@ export function RegisterPage() {
         />
 
         {registerMutation.isError ? (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+          <div className="rounded-lg border border-overload-danger/30 bg-overload-danger-muted px-4 py-3 text-sm font-medium text-overload-danger">
             {getApiErrorMessage(registerMutation.error, "Unable to create account.", {
               conflictMessage: "An account already exists for that email.",
             })}
@@ -110,7 +110,7 @@ export function RegisterPage() {
         ) : null}
 
         <button
-          className="inline-flex h-12 w-full items-center justify-center rounded-lg bg-overload-ink px-4 text-sm font-semibold text-white transition hover:bg-[#1b312b] disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex h-12 w-full items-center justify-center rounded-lg bg-overload-primary px-4 text-sm font-semibold text-overload-onPrimary transition hover:bg-overload-accent disabled:cursor-not-allowed disabled:opacity-60"
           type="submit"
           disabled={registerMutation.isPending}
         >
@@ -118,9 +118,9 @@ export function RegisterPage() {
         </button>
       </form>
 
-      <p className="mt-6 text-sm text-zinc-600">
+      <p className="mt-6 text-sm text-overload-muted">
         Already have an account?{" "}
-        <Link className="font-semibold text-overload-green hover:underline" to="/login">
+        <Link className="font-semibold text-overload-primary hover:underline" to="/login">
           Sign in
         </Link>
       </p>
@@ -149,9 +149,9 @@ function TextField({
 }: TextFieldProps) {
   return (
     <label className="block">
-      <span className="text-sm font-semibold text-zinc-700">{label}</span>
+      <span className="text-sm font-semibold text-overload-ink">{label}</span>
       <input
-        className="mt-2 h-12 w-full rounded-lg border border-zinc-300 bg-white px-3 text-base outline-none transition focus:border-overload-green focus:ring-4 focus:ring-overload-mint"
+        className="mt-2 h-12 w-full rounded-lg border border-overload-border-strong bg-overload-elevated px-3 text-base outline-none transition focus:border-overload-primary focus:ring-4 focus:ring-overload-accent-muted"
         type={type}
         value={value}
         onChange={(event) => onChange(event.target.value)}

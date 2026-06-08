@@ -1,25 +1,28 @@
 import type { LucideIcon } from "lucide-react";
 
 type MetricCardProps = {
-  accent?: "amber" | "blue" | "coral" | "green";
+  accent?: "amber" | "blue" | "coral" | "green" | "nutrition" | "primary" | "workout";
   icon: LucideIcon;
   label: string;
   value: string;
 };
 
 const accentClasses: Record<NonNullable<MetricCardProps["accent"]>, string> = {
-  amber: "bg-amber-50 text-overload-amber",
-  blue: "bg-blue-50 text-overload-blue",
-  coral: "bg-red-50 text-overload-coral",
-  green: "bg-emerald-50 text-overload-green",
+  amber: "bg-overload-coral text-overload-onPrimary",
+  blue: "bg-overload-accent text-overload-onPrimary",
+  coral: "bg-overload-coral text-overload-onPrimary",
+  green: "bg-overload-success text-overload-onPrimary",
+  nutrition: "bg-overload-nutrition text-overload-onPrimary",
+  primary: "bg-overload-primary text-overload-onPrimary",
+  workout: "bg-overload-workout text-overload-onPrimary",
 };
 
 export function MetricCard({ accent = "green", icon: Icon, label, value }: MetricCardProps) {
   return (
-    <article className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
+    <article className="rounded-lg border border-overload-border bg-overload-surface p-5 shadow-sm">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-sm font-medium text-zinc-500">{label}</p>
+          <p className="text-sm font-semibold text-overload-primary">{label}</p>
           <p className="mt-3 truncate text-3xl font-semibold tracking-normal text-overload-ink">
             {value}
           </p>

@@ -1,6 +1,6 @@
 # Overload Mobile
 
-Overload is a local-first fitness logging app built with Expo Router, React Native, and TypeScript. Version `1.0.0` focuses on fast mobile workout logging, nutrition tracking, preset management, and optional API sync when a backend URL is configured.
+Overload is a local-first fitness logging app built with Expo Router, React Native, and TypeScript. Version `1.0.0` focuses on fast mobile workout logging, nutrition tracking, preset management, and optional API sync when a backend URL is intentionally configured.
 
 ## Features
 
@@ -10,6 +10,8 @@ Overload is a local-first fitness logging app built with Expo Router, React Nati
 - Manual workout logging with reusable workout editor flows
 - Macro-based nutrition tracking with date-specific target history
 - Workout and meal preset management from Profile
+- Optional web pairing by code when `EXPO_PUBLIC_API_URL` is set
+- Explicit local-data import confirmation before uploading existing AsyncStorage data
 
 ## Requirements
 
@@ -25,6 +27,8 @@ cp .env.example .env
 ```
 
 Set `EXPO_PUBLIC_API_URL` in `.env` only when a backend is available. If it is omitted, Overload runs in local-only mode using AsyncStorage.
+
+When backend sync is configured, the settings screen shows web sync state and links to the pairing screen. Pairing stores an API auth session, then asks whether to import existing local nutrition, workouts, active workout draft, and presets. Choosing "Connect without import" leaves existing local data local.
 
 ## Development
 
@@ -53,4 +57,4 @@ npm run check
 
 ## Deployment Notes
 
-The Expo app is configured for static web output and native builds through `app.json`. Use `EXPO_PUBLIC_API_URL` for backend-backed nutrition/workout sync; otherwise the app remains fully usable with local persistence.
+The Expo app is configured for static web output and native builds through `app.json`. Use `EXPO_PUBLIC_API_URL` for backend-backed nutrition/workout sync only when intentionally testing API mode; otherwise the app remains fully usable with local persistence.

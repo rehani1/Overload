@@ -11,7 +11,7 @@ export function PageHeader({ actions, eyebrow, title }: PageHeaderProps) {
     <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
       <div>
         {eyebrow ? (
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-overload-green">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-overload-accent">
             {eyebrow}
           </p>
         ) : null}

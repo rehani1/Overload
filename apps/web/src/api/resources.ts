@@ -1,12 +1,14 @@
 import { apiClient } from "../lib/apiClient";
 import type {
   AnalyticsSummary,
-  Exercise,
+  AiChatRequest,
+  AiChatResponse,
+  MealPreset,
   NutritionEntry,
   NutritionTarget,
-  Program,
   User,
   Workout,
+  WorkoutPreset,
 } from "../types/api";
 
 export type AnalyticsRange = {
@@ -30,12 +32,6 @@ export async function getAnalyticsSummary(
   return response.data;
 }
 
-export async function getExercises(): Promise<Exercise[]> {
-  const response = await apiClient.get<Exercise[]>("/exercises");
-
-  return response.data;
-}
-
 export async function getNutritionEntries(): Promise<NutritionEntry[]> {
   const response = await apiClient.get<NutritionEntry[]>("/nutrition/entries");
 
@@ -48,14 +44,26 @@ export async function getNutritionTarget(): Promise<NutritionTarget> {
   return response.data;
 }
 
-export async function getPrograms(): Promise<Program[]> {
-  const response = await apiClient.get<Program[]>("/programs");
+export async function getMealPresets(): Promise<MealPreset[]> {
+  const response = await apiClient.get<MealPreset[]>("/presets/meals");
+
+  return response.data;
+}
+
+export async function getWorkoutPresets(): Promise<WorkoutPreset[]> {
+  const response = await apiClient.get<WorkoutPreset[]>("/presets/workouts");
 
   return response.data;
 }
 
 export async function getWorkouts(): Promise<Workout[]> {
   const response = await apiClient.get<Workout[]>("/workouts");
+
+  return response.data;
+}
+
+export async function sendAiChat(request: AiChatRequest): Promise<AiChatResponse> {
+  const response = await apiClient.post<AiChatResponse>("/ai/chat", request);
 
   return response.data;
 }
