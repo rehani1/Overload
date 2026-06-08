@@ -8,7 +8,7 @@ Overload is a fitness tracking and planning project with a completed Expo mobile
 - `apps/web` - Vite, React, TypeScript, Tailwind desktop app with authenticated routes and API-backed dashboards.
 - `services/api` - Spring Boot API with authentication, profile, fitness domain, nutrition, preset, program, analytics, mobile import, pairing, and AI chat routes.
 - `infra` - local infrastructure, including Docker Compose for PostgreSQL.
-- `docs` - deployment and release notes.
+
 
 ## Requirements
 
@@ -152,6 +152,4 @@ docker compose -f infra/docker-compose.yml --profile app up --build
 
 Use the direct API/web commands above when iterating on code.
 
-## Release Notes
 
-See `docs/DEPLOYMENT.md` for the current mobile deployment checklist and local-first behavior.
